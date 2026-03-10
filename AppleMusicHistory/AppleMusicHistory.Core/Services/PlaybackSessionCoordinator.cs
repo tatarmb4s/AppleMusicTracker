@@ -79,7 +79,9 @@ public sealed class PlaybackSessionCoordinator
                 snapshot.Subtitle,
                 snapshot.ObservedAtUtc,
                 snapshot.DurationSeconds,
-                CatalogAudioVariantsJson: null),
+                CatalogAudioVariantsJson: null,
+                LastObservedAudioBadgeRaw: snapshot.ObservedAudioBadgeRaw,
+                LastObservedAudioVariant: snapshot.ObservedAudioVariant),
             cancellationToken).ConfigureAwait(false);
 
         if (_metadataEnricher is not null)
@@ -186,6 +188,7 @@ public sealed class PlaybackSessionCoordinator
         }
 
         await AppendAudioVariantChangeEventAsync(previousAudioBadgeRaw, previousAudioVariant, snapshot, position, cancellationToken).ConfigureAwait(false);
+        await UpdateActiveTrackObservationAsync(snapshot, cancellationToken).ConfigureAwait(false);
         _active.LastSnapshot = snapshot;
     }
 
@@ -250,6 +253,7 @@ public sealed class PlaybackSessionCoordinator
         }
 
         await AppendAudioVariantChangeEventAsync(previousAudioBadgeRaw, previousAudioVariant, snapshot, position, cancellationToken).ConfigureAwait(false);
+        await UpdateActiveTrackObservationAsync(snapshot, cancellationToken).ConfigureAwait(false);
         _active.PauseStartedUtc = null;
         _active.LastSnapshot = snapshot;
     }
@@ -303,6 +307,8 @@ public sealed class PlaybackSessionCoordinator
                     metadata.ArtistUrl ?? track.ArtistUrl,
                     metadata.ArtworkUrl ?? track.ArtworkUrl,
                     metadata.CatalogAudioVariantsJson ?? track.CatalogAudioVariantsJson,
+                    track.LastObservedAudioBadgeRaw,
+                    track.LastObservedAudioVariant,
                     metadata.EnrichedAtUtc),
                 CancellationToken.None).ConfigureAwait(false);
         }
@@ -394,6 +400,38 @@ public sealed class PlaybackSessionCoordinator
             || previousAudioVariant != snapshot.ObservedAudioVariant;
     }
 
+    private async Task UpdateActiveTrackObservationAsync(PlaybackSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        if (_active is null)
+        {
+            return;
+        }
+
+        if (string.Equals(_active.Track.LastObservedAudioBadgeRaw, snapshot.ObservedAudioBadgeRaw, StringComparison.Ordinal)
+            && _active.Track.LastObservedAudioVariant == snapshot.ObservedAudioVariant)
+        {
+            return;
+        }
+
+        _active.Track = await _repository.UpsertTrackAsync(
+            new TrackUpsert(
+                _active.Fingerprint,
+                _active.Track.Title,
+                _active.Track.Artist,
+                _active.Track.Album,
+                _active.Track.Subtitle,
+                snapshot.ObservedAtUtc,
+                _active.Track.DurationSeconds,
+                _active.Track.SongUrl,
+                _active.Track.ArtistUrl,
+                _active.Track.ArtworkUrl,
+                _active.Track.CatalogAudioVariantsJson,
+                snapshot.ObservedAudioBadgeRaw,
+                snapshot.ObservedAudioVariant,
+                _active.Track.EnrichedAtUtc),
+            cancellationToken).ConfigureAwait(false);
+    }
+
     private sealed class ActiveSessionState
     {
         public ActiveSessionState(ListeningSessionRecord record, TrackRecord track, TrackFingerprint fingerprint)
@@ -404,7 +442,7 @@ public sealed class PlaybackSessionCoordinator
         }
 
         public ListeningSessionRecord Record { get; set; }
-        public TrackRecord Track { get; }
+        public TrackRecord Track { get; set; }
         public TrackFingerprint Fingerprint { get; }
         public PlaybackSnapshot? LastSnapshot { get; set; }
         public DateTimeOffset LastCheckpointUtc { get; set; }

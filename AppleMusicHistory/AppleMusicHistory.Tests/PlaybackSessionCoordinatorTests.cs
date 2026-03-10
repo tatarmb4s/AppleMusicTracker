@@ -123,6 +123,8 @@ public sealed class PlaybackSessionCoordinatorTests
                     Subtitle = track.Subtitle,
                     DurationSeconds = track.DurationSeconds ?? existing.DurationSeconds,
                     CatalogAudioVariantsJson = track.CatalogAudioVariantsJson ?? existing.CatalogAudioVariantsJson,
+                    LastObservedAudioBadgeRaw = track.LastObservedAudioBadgeRaw,
+                    LastObservedAudioVariant = track.LastObservedAudioVariant,
                     LastSeenUtc = track.ObservedAtUtc
                 };
                 _tracks[track.Fingerprint.Value] = updated;
@@ -144,6 +146,8 @@ public sealed class PlaybackSessionCoordinatorTests
                 track.ArtistUrl,
                 track.ArtworkUrl,
                 track.CatalogAudioVariantsJson,
+                track.LastObservedAudioBadgeRaw,
+                track.LastObservedAudioVariant,
                 track.ObservedAtUtc,
                 track.ObservedAtUtc,
                 track.EnrichedAtUtc);

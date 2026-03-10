@@ -26,10 +26,10 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
         var fingerprint = TrackFingerprint.From("Song", "Artist", "Album");
         var first = await repository.UpsertTrackAsync(
-            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt, 180, CatalogAudioVariantsJson: "[\"Lossless\"]"),
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt, 180, CatalogAudioVariantsJson: "[\"Lossless\"]", LastObservedAudioBadgeRaw: "Dolby Audio", LastObservedAudioVariant: PlaybackAudioVariant.DolbyAudio),
             CancellationToken.None);
         var second = await repository.UpsertTrackAsync(
-            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt.AddMinutes(1), 180, CatalogAudioVariantsJson: "[\"Lossless\"]"),
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt.AddMinutes(1), 180, CatalogAudioVariantsJson: "[\"Lossless\"]", LastObservedAudioBadgeRaw: "Lossless", LastObservedAudioVariant: PlaybackAudioVariant.Lossless),
             CancellationToken.None);
 
         Assert.Equal(first.TrackId, second.TrackId);
@@ -65,6 +65,8 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         Assert.Equal("[\"Lossless\"]", exports[0].CatalogAudioVariantsJson);
         Assert.Equal("Lossless", exports[0].LastObservedAudioBadgeRaw);
         Assert.Equal(PlaybackAudioVariant.Lossless, exports[0].LastObservedAudioVariant);
+        Assert.Equal("Lossless", second.LastObservedAudioBadgeRaw);
+        Assert.Equal(PlaybackAudioVariant.Lossless, second.LastObservedAudioVariant);
     }
 
     [Fact]
@@ -95,7 +97,27 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializeAsync_UpgradesSchemaToVersion2()
+    public async Task UpsertTrack_CanClearLiveAudioObservation()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        var fingerprint = TrackFingerprint.From("Song", "Artist", "Album");
+
+        await repository.UpsertTrackAsync(
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt, 180, LastObservedAudioBadgeRaw: "Dolby Audio", LastObservedAudioVariant: PlaybackAudioVariant.DolbyAudio),
+            CancellationToken.None);
+        var cleared = await repository.UpsertTrackAsync(
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt.AddMinutes(1), 180, LastObservedAudioBadgeRaw: null, LastObservedAudioVariant: null),
+            CancellationToken.None);
+
+        Assert.Null(cleared.LastObservedAudioBadgeRaw);
+        Assert.Null(cleared.LastObservedAudioVariant);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_UpgradesSchemaToVersion3()
     {
         var repository = new SqliteHistoryRepository(_databasePath);
         await repository.InitializeAsync(CancellationToken.None);
@@ -111,7 +133,7 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         command.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(await command.ExecuteScalarAsync());
 
-        Assert.Equal(2, version);
+        Assert.Equal(3, version);
     }
 
     public void Dispose()

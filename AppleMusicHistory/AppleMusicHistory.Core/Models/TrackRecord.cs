@@ -15,6 +15,8 @@ public sealed record TrackRecord(
     string? ArtistUrl,
     string? ArtworkUrl,
     string? CatalogAudioVariantsJson,
+    string? LastObservedAudioBadgeRaw,
+    PlaybackAudioVariant? LastObservedAudioVariant,
     DateTimeOffset FirstSeenUtc,
     DateTimeOffset LastSeenUtc,
     DateTimeOffset? EnrichedAtUtc);
