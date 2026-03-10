@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>AppleMusicHistory.Core</RootNamespace>
+    <AssemblyName>AppleMusicHistory.Core</AssemblyName>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
 </Project>

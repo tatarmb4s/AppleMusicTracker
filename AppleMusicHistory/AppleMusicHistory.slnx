@@ -1,3 +1,7 @@
 <Solution>
-  <Project Path="AppleMusicHistory/AppleMusicHistory.csproj" />
+  <Project Path="AppleMusicHistory.Core/AppleMusicHistory.Core.csproj" />
+  <Project Path="AppleMusicHistory.Tests/AppleMusicHistory.Tests.csproj" />
+  <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory.App/AppleMusicHistory.App.csproj" />
+  <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory.Infrastructure/AppleMusicHistory.Infrastructure.csproj" />
+  <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory/AppleMusicHistory.csproj" />
 </Solution>

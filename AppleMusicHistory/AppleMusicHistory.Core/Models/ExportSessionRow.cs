@@ -1,0 +1,24 @@
+namespace AppleMusicHistory.Core.Models;
+
+public sealed record ExportSessionRow(
+    long SessionId,
+    string Fingerprint,
+    string Title,
+    string Artist,
+    string Album,
+    string Subtitle,
+    DateTimeOffset StartedAtUtc,
+    DateTimeOffset? EndedAtUtc,
+    int FirstPositionSeconds,
+    int LastPositionSeconds,
+    int MaxPositionSeconds,
+    double HeardSeconds,
+    int PauseCount,
+    int ResumeCount,
+    int ReplayIndex,
+    SessionState State,
+    SessionEndReason? EndReason,
+    DateTimeOffset LastObservedUtc,
+    string? SongUrl,
+    string? ArtistUrl,
+    string? ArtworkUrl);

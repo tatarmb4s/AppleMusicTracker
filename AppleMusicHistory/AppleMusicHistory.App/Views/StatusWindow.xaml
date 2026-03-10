@@ -1,0 +1,59 @@
+<Window x:Class="AppleMusicHistory.App.Views.StatusWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AppleMusicTracker"
+        Width="760"
+        Height="420"
+        MinWidth="700"
+        MinHeight="380"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock FontSize="24"
+                   FontWeight="SemiBold"
+                   Text="AppleMusicTracker" />
+
+        <StackPanel Grid.Row="1"
+                    Margin="0,16,0,0"
+                    Orientation="Vertical">
+            <TextBlock FontWeight="Bold" Text="{Binding AppleMusicState}" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding CurrentTrack}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding ActiveSession}" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding Statistics}" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding LastObserved, StringFormat=Last observed: {0}}" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding DatabasePath, StringFormat=Database: {0}}" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <GroupBox Grid.Row="2"
+                  Margin="0,16,0,0"
+                  Header="Settings">
+            <StackPanel Margin="12">
+                <CheckBox x:Name="LaunchAtStartupCheckBox"
+                          Content="Start with Windows"
+                          IsChecked="{Binding LaunchAtStartup}"
+                          Checked="LaunchAtStartupChanged"
+                          Unchecked="LaunchAtStartupChanged" />
+                <CheckBox Margin="0,8,0,0"
+                          Content="Metadata enrichment enabled"
+                          IsEnabled="False"
+                          IsChecked="{Binding MetadataEnrichmentEnabled}" />
+            </StackPanel>
+        </GroupBox>
+
+        <StackPanel Grid.Row="3"
+                    Margin="0,16,0,0"
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal">
+            <Button Width="120" Margin="0,0,8,0" Click="ToggleTrackingClick">Pause / Resume</Button>
+            <Button Width="120" Margin="0,0,8,0" Click="ExportCsvClick">Export CSV</Button>
+            <Button Width="120" Margin="0,0,8,0" Click="ExportJsonClick">Export JSON</Button>
+            <Button Width="150" Click="OpenDatabaseFolderClick">Open Database Folder</Button>
+        </StackPanel>
+    </Grid>
+</Window>
