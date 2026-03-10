@@ -17,7 +17,7 @@ public sealed class HistoryExporter
     {
         var rows = await _repository.ExportSessionsAsync(null, null, cancellationToken).ConfigureAwait(false);
         var builder = new StringBuilder();
-        builder.AppendLine("SessionId,Fingerprint,Title,Artist,Album,Subtitle,StartedAtUtc,EndedAtUtc,FirstPositionSeconds,LastPositionSeconds,MaxPositionSeconds,HeardSeconds,PauseCount,ResumeCount,ReplayIndex,State,EndReason,LastObservedUtc,SongUrl,ArtistUrl,ArtworkUrl");
+        builder.AppendLine("SessionId,Fingerprint,Title,Artist,Album,Subtitle,StartedAtUtc,EndedAtUtc,FirstPositionSeconds,LastPositionSeconds,MaxPositionSeconds,HeardSeconds,PauseCount,ResumeCount,ReplayIndex,State,EndReason,LastObservedUtc,SongUrl,ArtistUrl,ArtworkUrl,CatalogAudioVariantsJson,LastObservedAudioBadgeRaw,LastObservedAudioVariant");
 
         foreach (var row in rows)
         {
@@ -43,7 +43,10 @@ public sealed class HistoryExporter
                 row.LastObservedUtc.ToString("O"),
                 row.SongUrl ?? string.Empty,
                 row.ArtistUrl ?? string.Empty,
-                row.ArtworkUrl ?? string.Empty
+                row.ArtworkUrl ?? string.Empty,
+                row.CatalogAudioVariantsJson ?? string.Empty,
+                row.LastObservedAudioBadgeRaw ?? string.Empty,
+                row.LastObservedAudioVariant?.ToString() ?? string.Empty
             };
 
             builder.AppendLine(string.Join(",", cells.Select(EscapeCsv)));

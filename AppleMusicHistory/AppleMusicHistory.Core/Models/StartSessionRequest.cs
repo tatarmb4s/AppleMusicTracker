@@ -7,4 +7,6 @@ public sealed record StartSessionRequest(
     int FirstPositionSeconds,
     int ReplayIndex,
     DateTimeOffset LastObservedUtc,
-    SessionState State);
+    SessionState State,
+    string? LastObservedAudioBadgeRaw,
+    PlaybackAudioVariant? LastObservedAudioVariant);

@@ -11,6 +11,7 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     private string _statistics = "Tracks: 0 | Sessions: 0 | Open: 0";
     private string _lastObserved = "Never";
     private string _databasePath = string.Empty;
+    private string _currentAudioFormat = "Standard / unknown";
     private bool _isTrackingPaused;
     private bool _launchAtStartup;
     private bool _metadataEnrichmentEnabled;
@@ -51,6 +52,12 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     {
         get => _databasePath;
         set => SetField(ref _databasePath, value);
+    }
+
+    public string CurrentAudioFormat
+    {
+        get => _currentAudioFormat;
+        set => SetField(ref _currentAudioFormat, value);
     }
 
     public bool IsTrackingPaused

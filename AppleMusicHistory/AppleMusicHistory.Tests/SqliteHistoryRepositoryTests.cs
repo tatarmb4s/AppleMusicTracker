@@ -1,5 +1,6 @@
 using AppleMusicHistory.Core.Models;
 using AppleMusicHistory.Infrastructure.Data;
+using Microsoft.Data.Sqlite;
 
 namespace AppleMusicHistory.Tests;
 
@@ -25,19 +26,27 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
         var fingerprint = TrackFingerprint.From("Song", "Artist", "Album");
         var first = await repository.UpsertTrackAsync(
-            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt, 180),
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt, 180, CatalogAudioVariantsJson: "[\"Lossless\"]"),
             CancellationToken.None);
         var second = await repository.UpsertTrackAsync(
-            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt.AddMinutes(1), 180),
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist — Album", observedAt.AddMinutes(1), 180, CatalogAudioVariantsJson: "[\"Lossless\"]"),
             CancellationToken.None);
 
         Assert.Equal(first.TrackId, second.TrackId);
 
         var session = await repository.StartSessionAsync(
-            new StartSessionRequest(first.TrackId, appRunId, observedAt, 0, 0, observedAt, SessionState.Playing),
+            new StartSessionRequest(first.TrackId, appRunId, observedAt, 0, 0, observedAt, SessionState.Playing, "Dolby Audio", PlaybackAudioVariant.DolbyAudio),
             CancellationToken.None);
         await repository.UpdateSessionProgressAsync(
-            new SessionProgressUpdate(session.SessionId, 30, 30, 30, observedAt.AddSeconds(30), SessionState.Playing),
+            new SessionProgressUpdate(
+                session.SessionId,
+                30,
+                30,
+                30,
+                observedAt.AddSeconds(30),
+                SessionState.Playing,
+                LastObservedAudioBadgeRaw: "Lossless",
+                LastObservedAudioVariant: PlaybackAudioVariant.Lossless),
             CancellationToken.None);
         await repository.AppendEventAsync(
             new SessionEventRecord(session.SessionId, SessionEventType.ProgressCheckpoint, observedAt.AddSeconds(30), 30),
@@ -53,6 +62,9 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         Assert.Single(events);
         Assert.Equal("Song", exports[0].Title);
         Assert.Equal(SessionEndReason.TrackChanged, exports[0].EndReason);
+        Assert.Equal("[\"Lossless\"]", exports[0].CatalogAudioVariantsJson);
+        Assert.Equal("Lossless", exports[0].LastObservedAudioBadgeRaw);
+        Assert.Equal(PlaybackAudioVariant.Lossless, exports[0].LastObservedAudioVariant);
     }
 
     [Fact]
@@ -71,7 +83,7 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
             CancellationToken.None);
 
         await repository.StartSessionAsync(
-            new StartSessionRequest(track.TrackId, appRunId, DateTimeOffset.UtcNow, 0, 0, DateTimeOffset.UtcNow, SessionState.Playing),
+            new StartSessionRequest(track.TrackId, appRunId, DateTimeOffset.UtcNow, 0, 0, DateTimeOffset.UtcNow, SessionState.Playing, null, null),
             CancellationToken.None);
 
         await repository.RecoverOpenSessionsAsync(DateTimeOffset.UtcNow, SessionEndReason.RecoveredAfterCrash, CancellationToken.None);
@@ -82,9 +94,29 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         Assert.Equal(SessionState.Closed, exports[0].State);
     }
 
+    [Fact]
+    public async Task InitializeAsync_UpgradesSchemaToVersion2()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = _databasePath,
+            Mode = SqliteOpenMode.ReadWrite
+        }.ToString());
+        await connection.OpenAsync();
+
+        var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA user_version;";
+        var version = Convert.ToInt32(await command.ExecuteScalarAsync());
+
+        Assert.Equal(2, version);
+    }
+
     public void Dispose()
     {
-        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+        SqliteConnection.ClearAllPools();
         if (File.Exists(_databasePath))
         {
             try

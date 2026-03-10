@@ -5,4 +5,5 @@ public sealed record TrackMetadata(
     string? SongUrl,
     string? ArtistUrl,
     string? ArtworkUrl,
+    string? CatalogAudioVariantsJson,
     DateTimeOffset EnrichedAtUtc);

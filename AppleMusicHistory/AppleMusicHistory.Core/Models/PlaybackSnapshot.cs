@@ -11,6 +11,8 @@ public sealed record PlaybackSnapshot
     public bool IsPaused { get; init; }
     public int? CurrentPositionSeconds { get; init; }
     public int? DurationSeconds { get; init; }
+    public string? ObservedAudioBadgeRaw { get; init; }
+    public PlaybackAudioVariant? ObservedAudioVariant { get; init; }
     public string? SourceDescription { get; init; }
 
     public static PlaybackSnapshot Create(
@@ -22,8 +24,11 @@ public sealed record PlaybackSnapshot
         bool isPaused,
         int? currentPositionSeconds,
         int? durationSeconds,
+        string? observedAudioBadgeRaw = null,
         string? sourceDescription = null)
     {
+        var normalizedAudioBadge = PlaybackAudioVariantParser.NormalizeBadge(observedAudioBadgeRaw);
+
         return new PlaybackSnapshot
         {
             Title = TrackFingerprint.Sanitize(title),
@@ -35,6 +40,8 @@ public sealed record PlaybackSnapshot
             IsPaused = isPaused,
             CurrentPositionSeconds = currentPositionSeconds,
             DurationSeconds = durationSeconds,
+            ObservedAudioBadgeRaw = normalizedAudioBadge,
+            ObservedAudioVariant = PlaybackAudioVariantParser.ParseBadge(normalizedAudioBadge),
             SourceDescription = sourceDescription
         };
     }

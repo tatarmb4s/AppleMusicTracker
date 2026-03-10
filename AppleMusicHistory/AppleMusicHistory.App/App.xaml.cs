@@ -50,7 +50,7 @@ public partial class App : Application
         _runtime = new TrackerRuntime(
             new AppleMusicUiAutomationSnapshotSource(logger: logger),
             repository,
-            new AppleMusicWebMetadataEnricher(logger: logger),
+            CreateMetadataEnricher(logger),
             _settingsStore,
             _settings,
             logger,
@@ -172,6 +172,9 @@ public partial class App : Application
             _viewModel.CurrentTrack = status.CurrentSnapshot is null
                 ? "No current track"
                 : $"{status.CurrentSnapshot.Title} | {status.CurrentSnapshot.Artist} | {status.CurrentSnapshot.Album}";
+            _viewModel.CurrentAudioFormat = status.CurrentSnapshot is null
+                ? "Standard / unknown"
+                : PlaybackAudioVariantParser.ToDisplayName(status.CurrentSnapshot.ObservedAudioVariant, status.CurrentSnapshot.ObservedAudioBadgeRaw);
             _viewModel.ActiveSession = status.ActiveSession is null
                 ? "No active session"
                 : $"Session #{status.ActiveSession.SessionId} | Replay {status.ActiveSession.ReplayIndex} | Last pos {status.ActiveSession.LastPositionSeconds}s";
@@ -239,5 +242,22 @@ public partial class App : Application
         }
 
         return FileVersionInfo.GetVersionInfo(exePath).FileVersion ?? "dev";
+    }
+
+    private static CompositeTrackMetadataEnricher CreateMetadataEnricher(FileLogger logger)
+    {
+        var enrichers = new List<AppleMusicHistory.Core.Abstractions.ITrackMetadataEnricher>
+        {
+            new AppleMusicWebMetadataEnricher(logger: logger)
+        };
+
+        var developerToken = Environment.GetEnvironmentVariable("APPLE_MUSIC_DEVELOPER_TOKEN");
+        if (!string.IsNullOrWhiteSpace(developerToken))
+        {
+            var storefront = Environment.GetEnvironmentVariable("APPLE_MUSIC_STOREFRONT") ?? "us";
+            enrichers.Add(new AppleMusicCatalogMetadataEnricher(developerToken, storefront, logger));
+        }
+
+        return new CompositeTrackMetadataEnricher(enrichers);
     }
 }

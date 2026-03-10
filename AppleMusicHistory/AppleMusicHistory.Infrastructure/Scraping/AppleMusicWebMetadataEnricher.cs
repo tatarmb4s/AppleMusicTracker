@@ -40,7 +40,7 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
                 ? null
                 : await GetSongDurationFromAlbumPageAsync(songUrl, fingerprint, cancellationToken).ConfigureAwait(false);
 
-            return new TrackMetadata(durationSeconds, songUrl, artistUrl, artworkUrl, DateTimeOffset.UtcNow);
+            return new TrackMetadata(durationSeconds, songUrl, artistUrl, artworkUrl, null, DateTimeOffset.UtcNow);
         }
         catch (Exception ex)
         {

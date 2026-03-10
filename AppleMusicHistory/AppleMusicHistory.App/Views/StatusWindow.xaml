@@ -24,6 +24,7 @@
                     Orientation="Vertical">
             <TextBlock FontWeight="Bold" Text="{Binding AppleMusicState}" />
             <TextBlock Margin="0,8,0,0" Text="{Binding CurrentTrack}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,8,0,0" Text="{Binding CurrentAudioFormat, StringFormat=Audio format: {0}}" />
             <TextBlock Margin="0,8,0,0" Text="{Binding ActiveSession}" />
             <TextBlock Margin="0,8,0,0" Text="{Binding Statistics}" />
             <TextBlock Margin="0,8,0,0" Text="{Binding LastObserved, StringFormat=Last observed: {0}}" />

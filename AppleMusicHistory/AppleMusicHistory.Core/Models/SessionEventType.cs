@@ -6,5 +6,6 @@ public enum SessionEventType
     ProgressCheckpoint = 2,
     Paused = 3,
     Resumed = 4,
-    SessionEnded = 5
+    SessionEnded = 5,
+    AudioVariantChanged = 6
 }

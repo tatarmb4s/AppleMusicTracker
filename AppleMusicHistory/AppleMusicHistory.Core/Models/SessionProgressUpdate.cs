@@ -8,4 +8,6 @@ public sealed record SessionProgressUpdate(
     DateTimeOffset LastObservedUtc,
     SessionState State,
     int? PauseCount = null,
-    int? ResumeCount = null);
+    int? ResumeCount = null,
+    string? LastObservedAudioBadgeRaw = null,
+    PlaybackAudioVariant? LastObservedAudioVariant = null);

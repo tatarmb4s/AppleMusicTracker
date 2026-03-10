@@ -124,6 +124,7 @@ public sealed class AppleMusicUiAutomationSnapshotSource : IAppleMusicSnapshotSo
             int? duration = currentTime.HasValue && remainingDuration.HasValue
                 ? currentTime.Value + remainingDuration.Value
                 : null;
+            var audioBadge = songPanel.FindFirstDescendant(cf => cf.ByAutomationId("AudioBadgeButton"))?.Name;
 
             return PlaybackSnapshot.Create(
                 songName,
@@ -134,6 +135,7 @@ public sealed class AppleMusicUiAutomationSnapshotSource : IAppleMusicSnapshotSo
                 isPaused,
                 currentTime,
                 duration,
+                audioBadge,
                 isMiniPlayer ? "Mini Player" : "Main Window");
         }
         catch (Exception ex)
@@ -146,6 +148,9 @@ public sealed class AppleMusicUiAutomationSnapshotSource : IAppleMusicSnapshotSo
             return null;
         }
     }
+
+    internal static PlaybackAudioVariant? ParseAudioBadge(string? badge)
+        => PlaybackAudioVariantParser.ParseBadge(badge);
 
     private bool DeterminePauseState(string? buttonName, double songProgressPercent)
     {

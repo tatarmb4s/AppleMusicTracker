@@ -11,4 +11,5 @@ public sealed record TrackUpsert(
     string? SongUrl = null,
     string? ArtistUrl = null,
     string? ArtworkUrl = null,
+    string? CatalogAudioVariantsJson = null,
     DateTimeOffset? EnrichedAtUtc = null);

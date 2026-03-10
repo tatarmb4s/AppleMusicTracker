@@ -21,4 +21,7 @@ public sealed record ExportSessionRow(
     DateTimeOffset LastObservedUtc,
     string? SongUrl,
     string? ArtistUrl,
-    string? ArtworkUrl);
+    string? ArtworkUrl,
+    string? CatalogAudioVariantsJson,
+    string? LastObservedAudioBadgeRaw,
+    PlaybackAudioVariant? LastObservedAudioVariant);

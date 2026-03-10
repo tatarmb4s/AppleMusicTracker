@@ -46,7 +46,42 @@ public sealed class PlaybackSessionCoordinatorTests
         Assert.Equal(SessionEndReason.Replayed, repository.ClosedSessions.Single().Reason);
     }
 
-    private static PlaybackSnapshot CreateSnapshot(DateTimeOffset observedAtUtc, bool isPaused, int current, int duration = 240)
+    [Fact]
+    public async Task SameAudioVariant_DoesNotAppendAudioVariantChangedEvent()
+    {
+        var repository = new InMemoryHistoryRepository();
+        var coordinator = new PlaybackSessionCoordinator(repository, new TrackerOptions { DatabasePath = "test.sqlite" }, 42);
+        var start = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+
+        await coordinator.HandleSnapshotAsync(CreateSnapshot(start, false, 5, audioBadge: "Dolby Audio"), CancellationToken.None);
+        await coordinator.HandleSnapshotAsync(CreateSnapshot(start.AddSeconds(5), false, 10, audioBadge: "Dolby Audio"), CancellationToken.None);
+
+        Assert.DoesNotContain(repository.Events, x => x.EventType == SessionEventType.AudioVariantChanged);
+    }
+
+    [Fact]
+    public async Task AudioVariantChange_AppendsEventAndUpdatesSession()
+    {
+        var repository = new InMemoryHistoryRepository();
+        var coordinator = new PlaybackSessionCoordinator(repository, new TrackerOptions { DatabasePath = "test.sqlite" }, 42);
+        var start = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+
+        await coordinator.HandleSnapshotAsync(CreateSnapshot(start, false, 5, audioBadge: "Dolby Audio"), CancellationToken.None);
+        await coordinator.HandleSnapshotAsync(CreateSnapshot(start.AddSeconds(5), false, 10, audioBadge: "Lossless"), CancellationToken.None);
+
+        var changeEvent = Assert.Single(repository.Events, x => x.EventType == SessionEventType.AudioVariantChanged);
+        Assert.Contains("DolbyAudio", changeEvent.PayloadJson);
+        Assert.Contains("Lossless", changeEvent.PayloadJson);
+        Assert.Equal(PlaybackAudioVariant.Lossless, repository.Sessions.Single().LastObservedAudioVariant);
+        Assert.Equal("Lossless", repository.Sessions.Single().LastObservedAudioBadgeRaw);
+    }
+
+    private static PlaybackSnapshot CreateSnapshot(
+        DateTimeOffset observedAtUtc,
+        bool isPaused,
+        int current,
+        int duration = 240,
+        string? audioBadge = null)
     {
         return PlaybackSnapshot.Create(
             "Song",
@@ -56,7 +91,8 @@ public sealed class PlaybackSessionCoordinatorTests
             observedAtUtc,
             isPaused,
             current,
-            duration);
+            duration,
+            audioBadge);
     }
 
     private sealed class InMemoryHistoryRepository : IHistoryRepository
@@ -67,6 +103,7 @@ public sealed class PlaybackSessionCoordinatorTests
 
         public List<ListeningSessionRecord> Sessions { get; } = [];
         public List<SessionClosure> ClosedSessions { get; } = [];
+        public List<SessionEventRecord> Events { get; } = [];
 
         public Task InitializeAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
@@ -85,6 +122,7 @@ public sealed class PlaybackSessionCoordinatorTests
                     Album = track.Album,
                     Subtitle = track.Subtitle,
                     DurationSeconds = track.DurationSeconds ?? existing.DurationSeconds,
+                    CatalogAudioVariantsJson = track.CatalogAudioVariantsJson ?? existing.CatalogAudioVariantsJson,
                     LastSeenUtc = track.ObservedAtUtc
                 };
                 _tracks[track.Fingerprint.Value] = updated;
@@ -105,6 +143,7 @@ public sealed class PlaybackSessionCoordinatorTests
                 track.SongUrl,
                 track.ArtistUrl,
                 track.ArtworkUrl,
+                track.CatalogAudioVariantsJson,
                 track.ObservedAtUtc,
                 track.ObservedAtUtc,
                 track.EnrichedAtUtc);
@@ -132,7 +171,9 @@ public sealed class PlaybackSessionCoordinatorTests
                 session.ReplayIndex,
                 session.State,
                 null,
-                session.LastObservedUtc);
+                session.LastObservedUtc,
+                session.LastObservedAudioBadgeRaw,
+                session.LastObservedAudioVariant);
             Sessions.Add(record);
             return Task.FromResult(record);
         }
@@ -146,6 +187,8 @@ public sealed class PlaybackSessionCoordinatorTests
                 MaxPositionSeconds = update.MaxPositionSeconds,
                 HeardSeconds = session.HeardSeconds + update.HeardSecondsDelta,
                 LastObservedUtc = update.LastObservedUtc,
+                LastObservedAudioBadgeRaw = update.LastObservedAudioBadgeRaw,
+                LastObservedAudioVariant = update.LastObservedAudioVariant,
                 State = update.State,
                 PauseCount = update.PauseCount ?? session.PauseCount,
                 ResumeCount = update.ResumeCount ?? session.ResumeCount
@@ -153,7 +196,11 @@ public sealed class PlaybackSessionCoordinatorTests
             return Task.CompletedTask;
         }
 
-        public Task AppendEventAsync(SessionEventRecord sessionEvent, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task AppendEventAsync(SessionEventRecord sessionEvent, CancellationToken cancellationToken)
+        {
+            Events.Add(sessionEvent);
+            return Task.CompletedTask;
+        }
 
         public Task CloseSessionAsync(SessionClosure closure, CancellationToken cancellationToken)
         {

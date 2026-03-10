@@ -1,5 +1,6 @@
 using AppleMusicHistory.Core.Abstractions;
 using AppleMusicHistory.Core.Models;
+using System.Text.Json;
 
 namespace AppleMusicHistory.Core.Services;
 
@@ -77,7 +78,8 @@ public sealed class PlaybackSessionCoordinator
                 snapshot.Album,
                 snapshot.Subtitle,
                 snapshot.ObservedAtUtc,
-                snapshot.DurationSeconds),
+                snapshot.DurationSeconds,
+                CatalogAudioVariantsJson: null),
             cancellationToken).ConfigureAwait(false);
 
         if (_metadataEnricher is not null)
@@ -99,7 +101,9 @@ public sealed class PlaybackSessionCoordinator
                 position,
                 replayIndex,
                 snapshot.ObservedAtUtc,
-                snapshot.IsPaused ? SessionState.Paused : SessionState.Playing),
+                snapshot.IsPaused ? SessionState.Paused : SessionState.Playing,
+                snapshot.ObservedAudioBadgeRaw,
+                snapshot.ObservedAudioVariant),
             cancellationToken).ConfigureAwait(false);
 
         _active = new ActiveSessionState(record, track, snapshot.Fingerprint)
@@ -123,6 +127,8 @@ public sealed class PlaybackSessionCoordinator
 
         var position = snapshot.CurrentPositionSeconds ?? _active.Record.LastPositionSeconds;
         var maxPosition = Math.Max(_active.Record.MaxPositionSeconds, position);
+        var previousAudioBadgeRaw = _active.Record.LastObservedAudioBadgeRaw;
+        var previousAudioVariant = _active.Record.LastObservedAudioVariant;
 
         if (_active.Record.State != SessionState.Paused)
         {
@@ -133,7 +139,9 @@ public sealed class PlaybackSessionCoordinator
                 LastPositionSeconds = position,
                 MaxPositionSeconds = maxPosition,
                 LastObservedUtc = snapshot.ObservedAtUtc,
-                State = SessionState.Paused
+                State = SessionState.Paused,
+                LastObservedAudioBadgeRaw = snapshot.ObservedAudioBadgeRaw,
+                LastObservedAudioVariant = snapshot.ObservedAudioVariant
             };
 
             await _repository.UpdateSessionProgressAsync(
@@ -144,7 +152,9 @@ public sealed class PlaybackSessionCoordinator
                     0,
                     snapshot.ObservedAtUtc,
                     SessionState.Paused,
-                    PauseCount: _active.Record.PauseCount),
+                    PauseCount: _active.Record.PauseCount,
+                    LastObservedAudioBadgeRaw: snapshot.ObservedAudioBadgeRaw,
+                    LastObservedAudioVariant: snapshot.ObservedAudioVariant),
                 cancellationToken).ConfigureAwait(false);
 
             await _repository.AppendEventAsync(
@@ -157,7 +167,9 @@ public sealed class PlaybackSessionCoordinator
             {
                 LastPositionSeconds = position,
                 MaxPositionSeconds = maxPosition,
-                LastObservedUtc = snapshot.ObservedAtUtc
+                LastObservedUtc = snapshot.ObservedAtUtc,
+                LastObservedAudioBadgeRaw = snapshot.ObservedAudioBadgeRaw,
+                LastObservedAudioVariant = snapshot.ObservedAudioVariant
             };
 
             await _repository.UpdateSessionProgressAsync(
@@ -167,10 +179,13 @@ public sealed class PlaybackSessionCoordinator
                     maxPosition,
                     0,
                     snapshot.ObservedAtUtc,
-                    SessionState.Paused),
+                    SessionState.Paused,
+                    LastObservedAudioBadgeRaw: snapshot.ObservedAudioBadgeRaw,
+                    LastObservedAudioVariant: snapshot.ObservedAudioVariant),
                 cancellationToken).ConfigureAwait(false);
         }
 
+        await AppendAudioVariantChangeEventAsync(previousAudioBadgeRaw, previousAudioVariant, snapshot, position, cancellationToken).ConfigureAwait(false);
         _active.LastSnapshot = snapshot;
     }
 
@@ -199,6 +214,8 @@ public sealed class PlaybackSessionCoordinator
         var position = snapshot.CurrentPositionSeconds ?? _active.Record.LastPositionSeconds;
         var maxPosition = Math.Max(_active.Record.MaxPositionSeconds, position);
         var heardDelta = CalculateHeardSecondsDelta(_active, snapshot);
+        var previousAudioBadgeRaw = _active.Record.LastObservedAudioBadgeRaw;
+        var previousAudioVariant = _active.Record.LastObservedAudioVariant;
 
         _active.Record = _active.Record with
         {
@@ -206,7 +223,9 @@ public sealed class PlaybackSessionCoordinator
             MaxPositionSeconds = maxPosition,
             HeardSeconds = _active.Record.HeardSeconds + heardDelta,
             LastObservedUtc = snapshot.ObservedAtUtc,
-            State = SessionState.Playing
+            State = SessionState.Playing,
+            LastObservedAudioBadgeRaw = snapshot.ObservedAudioBadgeRaw,
+            LastObservedAudioVariant = snapshot.ObservedAudioVariant
         };
 
         await _repository.UpdateSessionProgressAsync(
@@ -217,7 +236,9 @@ public sealed class PlaybackSessionCoordinator
                 heardDelta,
                 snapshot.ObservedAtUtc,
                 SessionState.Playing,
-                ResumeCount: _active.Record.ResumeCount),
+                ResumeCount: _active.Record.ResumeCount,
+                LastObservedAudioBadgeRaw: snapshot.ObservedAudioBadgeRaw,
+                LastObservedAudioVariant: snapshot.ObservedAudioVariant),
             cancellationToken).ConfigureAwait(false);
 
         if (snapshot.ObservedAtUtc - _active.LastCheckpointUtc >= _options.CheckpointInterval)
@@ -228,6 +249,7 @@ public sealed class PlaybackSessionCoordinator
                 cancellationToken).ConfigureAwait(false);
         }
 
+        await AppendAudioVariantChangeEventAsync(previousAudioBadgeRaw, previousAudioVariant, snapshot, position, cancellationToken).ConfigureAwait(false);
         _active.PauseStartedUtc = null;
         _active.LastSnapshot = snapshot;
     }
@@ -280,6 +302,7 @@ public sealed class PlaybackSessionCoordinator
                     metadata.SongUrl ?? track.SongUrl,
                     metadata.ArtistUrl ?? track.ArtistUrl,
                     metadata.ArtworkUrl ?? track.ArtworkUrl,
+                    metadata.CatalogAudioVariantsJson ?? track.CatalogAudioVariantsJson,
                     metadata.EnrichedAtUtc),
                 CancellationToken.None).ConfigureAwait(false);
         }
@@ -337,6 +360,38 @@ public sealed class PlaybackSessionCoordinator
         var wasNearEnd = active.LastSnapshot.CurrentPositionSeconds.Value >= duration.Value - (int)_options.ReplayEndThreshold.TotalSeconds;
         var nowNearStart = snapshot.CurrentPositionSeconds.Value <= (int)_options.ReplayStartThreshold.TotalSeconds;
         return wasNearEnd && nowNearStart;
+    }
+
+    private async Task AppendAudioVariantChangeEventAsync(
+        string? previousAudioBadgeRaw,
+        PlaybackAudioVariant? previousAudioVariant,
+        PlaybackSnapshot snapshot,
+        int position,
+        CancellationToken cancellationToken)
+    {
+        if (_active is null || !HasObservedAudioChanged(previousAudioBadgeRaw, previousAudioVariant, snapshot))
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            previousRaw = previousAudioBadgeRaw,
+            previousVariant = previousAudioVariant?.ToString(),
+            currentRaw = snapshot.ObservedAudioBadgeRaw,
+            currentVariant = snapshot.ObservedAudioVariant?.ToString(),
+            observedAtUtc = snapshot.ObservedAtUtc
+        });
+
+        await _repository.AppendEventAsync(
+            new SessionEventRecord(_active.Record.SessionId, SessionEventType.AudioVariantChanged, snapshot.ObservedAtUtc, position, payload),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool HasObservedAudioChanged(string? previousAudioBadgeRaw, PlaybackAudioVariant? previousAudioVariant, PlaybackSnapshot snapshot)
+    {
+        return !string.Equals(previousAudioBadgeRaw, snapshot.ObservedAudioBadgeRaw, StringComparison.Ordinal)
+            || previousAudioVariant != snapshot.ObservedAudioVariant;
     }
 
     private sealed class ActiveSessionState

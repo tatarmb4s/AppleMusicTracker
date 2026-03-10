@@ -8,7 +8,12 @@ namespace AppleMusicHistory.Infrastructure.Data;
 
 public sealed class SqliteHistoryRepository : IHistoryRepository
 {
-    private const int CurrentSchemaVersion = 1;
+    private const int CurrentSchemaVersion = 2;
+    private static readonly string[] MigrationResources =
+    [
+        "AppleMusicHistory.Infrastructure.Sql.Migrations.001_initial.sql",
+        "AppleMusicHistory.Infrastructure.Sql.Migrations.002_audio_variants.sql"
+    ];
     private readonly string _connectionString;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -35,12 +40,15 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 return;
             }
 
-            var migrationSql = await ReadEmbeddedTextAsync("AppleMusicHistory.Infrastructure.Sql.Migrations.001_initial.sql", cancellationToken).ConfigureAwait(false);
             await using var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = migrationSql;
-            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            for (var index = version; index < CurrentSchemaVersion; index++)
+            {
+                var migrationSql = await ReadEmbeddedTextAsync(MigrationResources[index], cancellationToken).ConfigureAwait(false);
+                var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = migrationSql;
+                await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
 
             var pragma = connection.CreateCommand();
             pragma.Transaction = transaction;
@@ -102,12 +110,12 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             INSERT INTO tracks (
                 fingerprint, title, artist, album, subtitle,
                 normalized_title, normalized_artist, normalized_album,
-                duration_seconds, song_url, artist_url, artwork_url,
+                duration_seconds, song_url, artist_url, artwork_url, catalog_audio_variants_json,
                 first_seen_utc, last_seen_utc, enriched_at_utc)
             VALUES (
                 @fingerprint, @title, @artist, @album, @subtitle,
                 @normalized_title, @normalized_artist, @normalized_album,
-                @duration_seconds, @song_url, @artist_url, @artwork_url,
+                @duration_seconds, @song_url, @artist_url, @artwork_url, @catalog_audio_variants_json,
                 @observed_at_utc, @observed_at_utc, @enriched_at_utc)
             ON CONFLICT(fingerprint) DO UPDATE SET
                 title = excluded.title,
@@ -118,6 +126,7 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 song_url = COALESCE(excluded.song_url, tracks.song_url),
                 artist_url = COALESCE(excluded.artist_url, tracks.artist_url),
                 artwork_url = COALESCE(excluded.artwork_url, tracks.artwork_url),
+                catalog_audio_variants_json = COALESCE(excluded.catalog_audio_variants_json, tracks.catalog_audio_variants_json),
                 last_seen_utc = excluded.last_seen_utc,
                 enriched_at_utc = COALESCE(excluded.enriched_at_utc, tracks.enriched_at_utc);
             """;
@@ -136,6 +145,7 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             ("@song_url", track.SongUrl),
             ("@artist_url", track.ArtistUrl),
             ("@artwork_url", track.ArtworkUrl),
+            ("@catalog_audio_variants_json", track.CatalogAudioVariantsJson),
             ("@observed_at_utc", track.ObservedAtUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture)),
             ("@enriched_at_utc", track.EnrichedAtUtc?.UtcDateTime.ToString("O", CultureInfo.InvariantCulture))
         };
@@ -157,12 +167,12 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 track_id, app_run_id, started_at_utc, ended_at_utc,
                 first_position_seconds, last_position_seconds, max_position_seconds,
                 heard_seconds, pause_count, resume_count, replay_index,
-                state, end_reason, last_observed_utc)
+                state, end_reason, last_observed_utc, last_observed_audio_badge_raw, last_observed_audio_variant)
             VALUES (
                 @track_id, @app_run_id, @started_at_utc, NULL,
                 @first_position_seconds, @first_position_seconds, @first_position_seconds,
                 0, 0, 0, @replay_index,
-                @state, NULL, @last_observed_utc);
+                @state, NULL, @last_observed_utc, @last_observed_audio_badge_raw, @last_observed_audio_variant);
             SELECT last_insert_rowid();
             """;
 
@@ -175,7 +185,9 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 ("@first_position_seconds", session.FirstPositionSeconds),
                 ("@replay_index", session.ReplayIndex),
                 ("@state", (int)session.State),
-                ("@last_observed_utc", session.LastObservedUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture))
+                ("@last_observed_utc", session.LastObservedUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture)),
+                ("@last_observed_audio_badge_raw", session.LastObservedAudioBadgeRaw),
+                ("@last_observed_audio_variant", (int?)session.LastObservedAudioVariant)
             ],
             cancellationToken).ConfigureAwait(false);
 
@@ -190,6 +202,8 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 max_position_seconds = @max_position_seconds,
                 heard_seconds = heard_seconds + @heard_seconds_delta,
                 last_observed_utc = @last_observed_utc,
+                last_observed_audio_badge_raw = @last_observed_audio_badge_raw,
+                last_observed_audio_variant = @last_observed_audio_variant,
                 state = @state,
                 pause_count = COALESCE(@pause_count, pause_count),
                 resume_count = COALESCE(@resume_count, resume_count)
@@ -204,6 +218,8 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 ("@max_position_seconds", update.MaxPositionSeconds),
                 ("@heard_seconds_delta", update.HeardSecondsDelta),
                 ("@last_observed_utc", update.LastObservedUtc.UtcDateTime.ToString("O", CultureInfo.InvariantCulture)),
+                ("@last_observed_audio_badge_raw", update.LastObservedAudioBadgeRaw),
+                ("@last_observed_audio_variant", (int?)update.LastObservedAudioVariant),
                 ("@state", (int)update.State),
                 ("@pause_count", update.PauseCount),
                 ("@resume_count", update.ResumeCount)
@@ -293,7 +309,8 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                 s.session_id, t.fingerprint, t.title, t.artist, t.album, t.subtitle,
                 s.started_at_utc, s.ended_at_utc, s.first_position_seconds, s.last_position_seconds,
                 s.max_position_seconds, s.heard_seconds, s.pause_count, s.resume_count, s.replay_index,
-                s.state, s.end_reason, s.last_observed_utc, t.song_url, t.artist_url, t.artwork_url
+                s.state, s.end_reason, s.last_observed_utc, t.song_url, t.artist_url, t.artwork_url,
+                t.catalog_audio_variants_json, s.last_observed_audio_badge_raw, s.last_observed_audio_variant
             FROM listening_sessions s
             INNER JOIN tracks t ON t.track_id = s.track_id
             WHERE (@from_utc IS NULL OR s.started_at_utc >= @from_utc)
@@ -333,7 +350,10 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
                         ParseDate(reader, 17)!.Value,
                         reader.IsDBNull(18) ? null : reader.GetString(18),
                         reader.IsDBNull(19) ? null : reader.GetString(19),
-                        reader.IsDBNull(20) ? null : reader.GetString(20)));
+                        reader.IsDBNull(20) ? null : reader.GetString(20),
+                        reader.IsDBNull(21) ? null : reader.GetString(21),
+                        reader.IsDBNull(22) ? null : reader.GetString(22),
+                        reader.IsDBNull(23) ? null : (PlaybackAudioVariant)reader.GetInt32(23)));
                 }
 
                 return (IReadOnlyList<ExportSessionRow>)rows;
@@ -377,7 +397,7 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             SELECT
                 track_id, fingerprint, title, artist, album, subtitle,
                 normalized_title, normalized_artist, normalized_album,
-                duration_seconds, song_url, artist_url, artwork_url,
+                duration_seconds, song_url, artist_url, artwork_url, catalog_audio_variants_json,
                 first_seen_utc, last_seen_utc, enriched_at_utc
             FROM tracks WHERE fingerprint = @fingerprint;
             """;
@@ -506,9 +526,10 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             reader.IsDBNull(10) ? null : reader.GetString(10),
             reader.IsDBNull(11) ? null : reader.GetString(11),
             reader.IsDBNull(12) ? null : reader.GetString(12),
-            ParseDate(reader, 13)!.Value,
+            reader.IsDBNull(13) ? null : reader.GetString(13),
             ParseDate(reader, 14)!.Value,
-            ParseDate(reader, 15));
+            ParseDate(reader, 15)!.Value,
+            ParseDate(reader, 16));
     }
 
     private static ListeningSessionRecord MapSession(SqliteDataReader reader)
@@ -528,7 +549,9 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             reader.GetInt32(reader.GetOrdinal("replay_index")),
             (SessionState)reader.GetInt32(reader.GetOrdinal("state")),
             reader.IsDBNull(reader.GetOrdinal("end_reason")) ? null : (SessionEndReason)reader.GetInt32(reader.GetOrdinal("end_reason")),
-            ParseDate(reader, reader.GetOrdinal("last_observed_utc"))!.Value);
+            ParseDate(reader, reader.GetOrdinal("last_observed_utc"))!.Value,
+            reader.IsDBNull(reader.GetOrdinal("last_observed_audio_badge_raw")) ? null : reader.GetString(reader.GetOrdinal("last_observed_audio_badge_raw")),
+            reader.IsDBNull(reader.GetOrdinal("last_observed_audio_variant")) ? null : (PlaybackAudioVariant)reader.GetInt32(reader.GetOrdinal("last_observed_audio_variant")));
     }
 
     private static DateTimeOffset? ParseDate(SqliteDataReader reader, int ordinal)

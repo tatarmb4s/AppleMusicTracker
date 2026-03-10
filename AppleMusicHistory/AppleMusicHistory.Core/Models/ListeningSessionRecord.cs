@@ -15,4 +15,6 @@ public sealed record ListeningSessionRecord(
     int ReplayIndex,
     SessionState State,
     SessionEndReason? EndReason,
-    DateTimeOffset LastObservedUtc);
+    DateTimeOffset LastObservedUtc,
+    string? LastObservedAudioBadgeRaw,
+    PlaybackAudioVariant? LastObservedAudioVariant);
