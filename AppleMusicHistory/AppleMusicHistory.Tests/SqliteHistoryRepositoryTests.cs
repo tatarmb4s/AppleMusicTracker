@@ -117,7 +117,69 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
     }
 
     [Fact]
-    public async Task InitializeAsync_UpgradesSchemaToVersion3()
+    public async Task UpsertTrackMetadata_AndExportTracks_RoundTripsMetadata()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        var fingerprint = TrackFingerprint.From("Song", "Artist", "Album");
+        var track = await repository.UpsertTrackAsync(
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist - Album", observedAt, 180),
+            CancellationToken.None);
+
+        await repository.UpsertTrackMetadataAsync(
+            track.TrackId,
+            new TrackMetadataUpsert(
+                "https://music.apple.com/us/song/song-id",
+                "https://music.apple.com/us/album/album-id",
+                "https://music.apple.com/us/artist/artist-id",
+                "catalog-song",
+                "catalog-album",
+                "catalog-artist",
+                1,
+                2,
+                3,
+                181,
+                observedAt,
+                "Composer",
+                "[\"Electronic\"]",
+                4,
+                12,
+                1,
+                2,
+                "USRC17607839",
+                "https://example.com/preview.m4a",
+                "explicit",
+                "[\"Lossless\"]",
+                "https://example.com/artwork.jpg",
+                1000,
+                1000,
+                Path.Combine("artwork", "cover.jpg"),
+                "us",
+                "[\"web\",\"itunes\"]",
+                "{\"web\":true}",
+                "{\"itunes\":true}",
+                null,
+                observedAt.AddMinutes(1),
+                observedAt.AddMinutes(1)),
+            CancellationToken.None);
+
+        var details = await repository.GetTrackDetailsAsync(track.TrackId, CancellationToken.None);
+        var exports = await repository.ExportTracksAsync(CancellationToken.None);
+
+        Assert.NotNull(details);
+        Assert.NotNull(details!.Metadata);
+        Assert.Equal("Composer", details.Metadata!.ComposerName);
+        Assert.Equal("catalog-song", details.Metadata.CatalogSongId);
+        Assert.Equal("https://music.apple.com/us/album/album-id", details.Metadata.AppleMusicAlbumUrl);
+        Assert.Single(exports);
+        Assert.Equal("USRC17607839", exports[0].Isrc);
+        Assert.Equal(Path.Combine("artwork", "cover.jpg"), exports[0].ArtworkCacheRelativePath);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_UpgradesSchemaToVersion4()
     {
         var repository = new SqliteHistoryRepository(_databasePath);
         await repository.InitializeAsync(CancellationToken.None);
@@ -133,7 +195,7 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
         command.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(await command.ExecuteScalarAsync());
 
-        Assert.Equal(3, version);
+        Assert.Equal(4, version);
     }
 
     public void Dispose()

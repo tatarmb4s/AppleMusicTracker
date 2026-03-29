@@ -54,7 +54,8 @@ public partial class App : Application
             _settingsStore,
             _settings,
             logger,
-            appRunId);
+            appRunId,
+            new ArtworkCacheService());
         _runtime.StatusChanged += OnRuntimeStatusChanged;
         _runtime.Start();
 
@@ -117,7 +118,7 @@ public partial class App : Application
         ConfigureStartupShortcut();
     }
 
-    internal async Task ExportAsync(bool asJson)
+    internal async Task ExportAsync(bool asJson, bool tracks = false)
     {
         if (_exporter is null)
         {
@@ -127,7 +128,7 @@ public partial class App : Application
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
             Filter = asJson ? "JSON file (*.json)|*.json" : "CSV file (*.csv)|*.csv",
-            FileName = $"apple-music-history-{DateTime.Now:yyyyMMdd-HHmmss}.{(asJson ? "json" : "csv")}"
+            FileName = $"{(tracks ? "apple-music-tracks" : "apple-music-history")}-{DateTime.Now:yyyyMMdd-HHmmss}.{(asJson ? "json" : "csv")}"
         };
 
         if (dialog.ShowDialog() != true)
@@ -135,7 +136,15 @@ public partial class App : Application
             return;
         }
 
-        if (asJson)
+        if (tracks && asJson)
+        {
+            await _exporter.ExportTracksJsonAsync(dialog.FileName, CancellationToken.None).ConfigureAwait(true);
+        }
+        else if (tracks)
+        {
+            await _exporter.ExportTracksCsvAsync(dialog.FileName, CancellationToken.None).ConfigureAwait(true);
+        }
+        else if (asJson)
         {
             await _exporter.ExportJsonAsync(dialog.FileName, CancellationToken.None).ConfigureAwait(true);
         }
@@ -166,15 +175,34 @@ public partial class App : Application
             }
 
             _viewModel.IsTrackingPaused = status.IsTrackingPaused;
-            _viewModel.AppleMusicState = status.CurrentSnapshot is null
-                ? "Apple Music not detected"
-                : status.CurrentSnapshot.IsPaused ? "Apple Music paused" : "Apple Music playing";
-            _viewModel.CurrentTrack = status.CurrentSnapshot is null
-                ? "No current track"
-                : $"{status.CurrentSnapshot.Title} | {status.CurrentSnapshot.Artist} | {status.CurrentSnapshot.Album}";
-            _viewModel.CurrentAudioFormat = status.CurrentSnapshot is null
-                ? "Standard / unknown"
-                : PlaybackAudioVariantParser.ToDisplayName(status.CurrentSnapshot.ObservedAudioVariant, status.CurrentSnapshot.ObservedAudioBadgeRaw);
+            _viewModel.AppleMusicState = status.SourceState switch
+            {
+                AppleMusicSnapshotReadState.AppNotRunning => "Apple Music not running",
+                AppleMusicSnapshotReadState.NoTrackDetected => "Apple Music open, no track detected",
+                AppleMusicSnapshotReadState.Recovering => "Apple Music running, reconnecting",
+                AppleMusicSnapshotReadState.Available when status.CurrentSnapshot?.IsPaused == true => "Apple Music paused",
+                AppleMusicSnapshotReadState.Available => "Apple Music playing",
+                _ => "Apple Music status unknown"
+            };
+            var details = status.CurrentTrackDetails;
+            _viewModel.CurrentTrack = status.SourceState == AppleMusicSnapshotReadState.Available && status.CurrentSnapshot is not null
+                ? $"{status.CurrentSnapshot.Title} | {status.CurrentSnapshot.Artist} | {status.CurrentSnapshot.Album}"
+                : "No current track";
+            _viewModel.CurrentTitle = status.CurrentSnapshot?.Title ?? "No current track";
+            _viewModel.CurrentArtist = details?.Track.Artist ?? status.CurrentSnapshot?.Artist ?? string.Empty;
+            _viewModel.CurrentAlbum = details?.Track.Album ?? status.CurrentSnapshot?.Album ?? string.Empty;
+            _viewModel.CurrentComposer = details?.Metadata?.ComposerName ?? string.Empty;
+            _viewModel.CurrentReleaseDate = details?.Metadata?.ReleaseDateUtc?.ToLocalTime().ToString("d") ?? string.Empty;
+            _viewModel.CurrentGenres = FormatJsonStringArray(details?.Metadata?.GenreNamesJson);
+            _viewModel.CurrentTrackNumbers = FormatTrackNumbers(details?.Metadata);
+            _viewModel.CurrentIsrc = details?.Metadata?.Isrc ?? string.Empty;
+            _viewModel.CurrentSongUrl = details?.Metadata?.AppleMusicSongUrl ?? details?.Track.SongUrl ?? string.Empty;
+            _viewModel.CurrentAlbumUrl = details?.Metadata?.AppleMusicAlbumUrl ?? string.Empty;
+            _viewModel.CurrentArtistUrl = details?.Metadata?.AppleMusicArtistUrl ?? details?.Track.ArtistUrl ?? string.Empty;
+            _viewModel.CurrentArtworkPathOrUrl = ResolveArtworkPathOrUrl(details);
+            _viewModel.CurrentAudioFormat = status.SourceState == AppleMusicSnapshotReadState.Available && status.CurrentSnapshot is not null
+                ? PlaybackAudioVariantParser.ToDisplayName(status.CurrentSnapshot.ObservedAudioVariant, status.CurrentSnapshot.ObservedAudioBadgeRaw)
+                : "Standard / unknown";
             _viewModel.ActiveSession = status.ActiveSession is null
                 ? "No active session"
                 : $"Session #{status.ActiveSession.SessionId} | Replay {status.ActiveSession.ReplayIndex} | Last pos {status.ActiveSession.LastPositionSeconds}s";
@@ -199,6 +227,8 @@ public partial class App : Application
         menu.Items.Add("Pause Tracking", null, async (_, _) => await ToggleTrackingAsync(!(_viewModel?.IsTrackingPaused ?? false)).ConfigureAwait(false));
         menu.Items.Add("Export CSV", null, async (_, _) => await ExportAsync(false).ConfigureAwait(false));
         menu.Items.Add("Export JSON", null, async (_, _) => await ExportAsync(true).ConfigureAwait(false));
+        menu.Items.Add("Export Tracks CSV", null, async (_, _) => await ExportAsync(false, true).ConfigureAwait(false));
+        menu.Items.Add("Export Tracks JSON", null, async (_, _) => await ExportAsync(true, true).ConfigureAwait(false));
         menu.Items.Add("Open Database Folder", null, (_, _) => OpenDatabaseFolder());
         menu.Items.Add("Exit", null, (_, _) => Shutdown());
         _notifyIcon.ContextMenuStrip = menu;
@@ -248,7 +278,8 @@ public partial class App : Application
     {
         var enrichers = new List<AppleMusicHistory.Core.Abstractions.ITrackMetadataEnricher>
         {
-            new AppleMusicWebMetadataEnricher(logger: logger)
+            new AppleMusicWebMetadataEnricher(logger: logger),
+            new ItunesSearchMetadataEnricher(logger: logger)
         };
 
         var developerToken = Environment.GetEnvironmentVariable("APPLE_MUSIC_DEVELOPER_TOKEN");
@@ -259,5 +290,52 @@ public partial class App : Application
         }
 
         return new CompositeTrackMetadataEnricher(enrichers);
+    }
+
+    private static string ResolveArtworkPathOrUrl(TrackDetailsRecord? details)
+    {
+        var relativePath = details?.Metadata?.ArtworkCacheRelativePath;
+        if (!string.IsNullOrWhiteSpace(relativePath))
+        {
+            return Path.Combine(AppPaths.AppDataDirectory, relativePath);
+        }
+
+        return details?.Metadata?.ArtworkUrl
+            ?? details?.Track.ArtworkUrl
+            ?? string.Empty;
+    }
+
+    private static string FormatJsonStringArray(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            var items = System.Text.Json.JsonSerializer.Deserialize<string[]>(json);
+            return items is null ? string.Empty : string.Join(", ", items.Where(item => !string.IsNullOrWhiteSpace(item)));
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private static string FormatTrackNumbers(TrackMetadataRecord? metadata)
+    {
+        if (metadata is null)
+        {
+            return string.Empty;
+        }
+
+        var track = metadata.TrackNumber is null
+            ? string.Empty
+            : $"Track {metadata.TrackNumber}/{metadata.TrackCount?.ToString() ?? "?"}";
+        var disc = metadata.DiscNumber is null
+            ? string.Empty
+            : $"Disc {metadata.DiscNumber}/{metadata.DiscCount?.ToString() ?? "?"}";
+        return string.Join(" | ", new[] { track, disc }.Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 }

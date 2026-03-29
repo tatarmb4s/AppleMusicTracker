@@ -44,6 +44,64 @@ public sealed class HistoryExporterTests : IDisposable
         Assert.Contains("DolbyAudio", csv);
     }
 
+    [Fact]
+    public async Task ExportTracks_IncludesRichMetadataFields()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        var fingerprint = TrackFingerprint.From("Song", "Artist", "Album");
+        var track = await repository.UpsertTrackAsync(
+            new TrackUpsert(fingerprint, "Song", "Artist", "Album", "Artist - Album", observedAt, 180),
+            CancellationToken.None);
+        await repository.UpsertTrackMetadataAsync(
+            track.TrackId,
+            new TrackMetadataUpsert(
+                "https://music.apple.com/us/song/song-id",
+                "https://music.apple.com/us/album/album-id",
+                "https://music.apple.com/us/artist/artist-id",
+                "catalog-song",
+                "catalog-album",
+                "catalog-artist",
+                11,
+                22,
+                33,
+                180,
+                observedAt,
+                "Composer",
+                "[\"Electronic\"]",
+                4,
+                12,
+                1,
+                2,
+                "USRC17607839",
+                "https://example.com/preview.m4a",
+                "explicit",
+                "[\"Lossless\"]",
+                "https://example.com/art.jpg",
+                1000,
+                1000,
+                Path.Combine("artwork", "cover.jpg"),
+                "us",
+                "[\"catalog\"]",
+                null,
+                null,
+                "{\"catalog\":true}",
+                observedAt.AddMinutes(1),
+                observedAt.AddMinutes(1)),
+            CancellationToken.None);
+
+        var exporter = new HistoryExporter(repository);
+        await exporter.ExportTracksCsvAsync(_exportPath, CancellationToken.None);
+        var csv = await File.ReadAllTextAsync(_exportPath, CancellationToken.None);
+
+        Assert.Contains("CatalogSongId", csv);
+        Assert.Contains("ArtworkCacheRelativePath", csv);
+        Assert.Contains("USRC17607839", csv);
+        Assert.Contains("catalog-song", csv);
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();

@@ -38,6 +38,16 @@ public partial class StatusWindow : Window
         await _app.ExportAsync(true);
     }
 
+    private async void ExportTracksCsvClick(object sender, RoutedEventArgs e)
+    {
+        await _app.ExportAsync(false, true);
+    }
+
+    private async void ExportTracksJsonClick(object sender, RoutedEventArgs e)
+    {
+        await _app.ExportAsync(true, true);
+    }
+
     private void OpenDatabaseFolderClick(object sender, RoutedEventArgs e)
     {
         _app.OpenDatabaseFolder();

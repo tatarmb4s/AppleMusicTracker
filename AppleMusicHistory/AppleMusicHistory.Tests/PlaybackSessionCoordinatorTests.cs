@@ -100,6 +100,7 @@ public sealed class PlaybackSessionCoordinatorTests
         private long _nextTrackId = 1;
         private long _nextSessionId = 1;
         private readonly Dictionary<string, TrackRecord> _tracks = new();
+        private readonly Dictionary<long, TrackMetadataRecord> _metadata = new();
 
         public List<ListeningSessionRecord> Sessions { get; } = [];
         public List<SessionClosure> ClosedSessions { get; } = [];
@@ -153,6 +154,45 @@ public sealed class PlaybackSessionCoordinatorTests
                 track.EnrichedAtUtc);
             _tracks.Add(track.Fingerprint.Value, record);
             return Task.FromResult(record);
+        }
+
+        public Task UpsertTrackMetadataAsync(long trackId, TrackMetadataUpsert metadata, CancellationToken cancellationToken)
+        {
+            _metadata[trackId] = new TrackMetadataRecord(
+                trackId,
+                metadata.AppleMusicSongUrl,
+                metadata.AppleMusicAlbumUrl,
+                metadata.AppleMusicArtistUrl,
+                metadata.CatalogSongId,
+                metadata.CatalogAlbumId,
+                metadata.CatalogArtistId,
+                metadata.ItunesTrackId,
+                metadata.ItunesCollectionId,
+                metadata.ItunesArtistId,
+                metadata.DurationSeconds,
+                metadata.ReleaseDateUtc,
+                metadata.ComposerName,
+                metadata.GenreNamesJson,
+                metadata.TrackNumber,
+                metadata.TrackCount,
+                metadata.DiscNumber,
+                metadata.DiscCount,
+                metadata.Isrc,
+                metadata.PreviewUrl,
+                metadata.ContentRating,
+                metadata.CatalogAudioVariantsJson,
+                metadata.ArtworkUrl,
+                metadata.ArtworkWidth,
+                metadata.ArtworkHeight,
+                metadata.ArtworkCacheRelativePath,
+                metadata.Storefront,
+                metadata.MetadataSourcesJson,
+                metadata.WebPayloadJson,
+                metadata.ItunesPayloadJson,
+                metadata.CatalogPayloadJson,
+                metadata.EnrichedAtUtc,
+                metadata.ArtworkCachedAtUtc);
+            return Task.CompletedTask;
         }
 
         public Task<int> GetNextReplayIndexAsync(long trackId, CancellationToken cancellationToken)
@@ -225,8 +265,23 @@ public sealed class PlaybackSessionCoordinatorTests
         public Task<TrackerStatistics> GetStatisticsAsync(CancellationToken cancellationToken)
             => Task.FromResult(new TrackerStatistics(_tracks.Count, Sessions.Count, Sessions.Count(s => s.State != SessionState.Closed), Sessions.LastOrDefault()?.LastObservedUtc));
 
+        public Task<TrackDetailsRecord?> GetTrackDetailsAsync(long trackId, CancellationToken cancellationToken)
+        {
+            var track = _tracks.Values.SingleOrDefault(item => item.TrackId == trackId);
+            if (track is null)
+            {
+                return Task.FromResult<TrackDetailsRecord?>(null);
+            }
+
+            _metadata.TryGetValue(trackId, out var metadata);
+            return Task.FromResult<TrackDetailsRecord?>(new TrackDetailsRecord(track, metadata));
+        }
+
         public Task<IReadOnlyList<ExportSessionRow>> ExportSessionsAsync(DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken cancellationToken)
             => Task.FromResult((IReadOnlyList<ExportSessionRow>)Array.Empty<ExportSessionRow>());
+
+        public Task<IReadOnlyList<ExportTrackRow>> ExportTracksAsync(CancellationToken cancellationToken)
+            => Task.FromResult((IReadOnlyList<ExportTrackRow>)Array.Empty<ExportTrackRow>());
 
         public Task<IReadOnlyList<SessionEventRecord>> GetSessionEventsAsync(long sessionId, CancellationToken cancellationToken)
             => Task.FromResult((IReadOnlyList<SessionEventRecord>)Array.Empty<SessionEventRecord>());

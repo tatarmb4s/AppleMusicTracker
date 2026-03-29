@@ -19,17 +19,41 @@
                    FontWeight="SemiBold"
                    Text="AppleMusicTracker" />
 
-        <StackPanel Grid.Row="1"
-                    Margin="0,16,0,0"
-                    Orientation="Vertical">
-            <TextBlock FontWeight="Bold" Text="{Binding AppleMusicState}" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding CurrentTrack}" TextWrapping="Wrap" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding CurrentAudioFormat, StringFormat=Audio format: {0}}" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding ActiveSession}" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding Statistics}" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding LastObserved, StringFormat=Last observed: {0}}" />
-            <TextBlock Margin="0,8,0,0" Text="{Binding DatabasePath, StringFormat=Database: {0}}" TextWrapping="Wrap" />
-        </StackPanel>
+        <Grid Grid.Row="1" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="160" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Width="160"
+                    Height="160"
+                    CornerRadius="8"
+                    BorderBrush="#DDD"
+                    BorderThickness="1">
+                <Image Source="{Binding CurrentArtworkPathOrUrl}" Stretch="UniformToFill" />
+            </Border>
+
+            <StackPanel Grid.Column="2" Orientation="Vertical">
+                <TextBlock FontWeight="Bold" Text="{Binding AppleMusicState}" />
+                <TextBlock Margin="0,8,0,0" FontSize="20" FontWeight="SemiBold" Text="{Binding CurrentTitle}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentArtist, StringFormat=Artist: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentAlbum, StringFormat=Album: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentComposer, StringFormat=Composer: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentReleaseDate, StringFormat=Release: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentGenres, StringFormat=Genres: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentTrackNumbers, StringFormat=Track / Disc: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentIsrc, StringFormat=ISRC: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentAudioFormat, StringFormat=Audio format: {0}}" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentSongUrl, StringFormat=Song URL: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentAlbumUrl, StringFormat=Album URL: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding CurrentArtistUrl, StringFormat=Artist URL: {0}}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,8,0,0" Text="{Binding ActiveSession}" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding Statistics}" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding LastObserved, StringFormat=Last observed: {0}}" />
+                <TextBlock Margin="0,4,0,0" Text="{Binding DatabasePath, StringFormat=Database: {0}}" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
 
         <GroupBox Grid.Row="2"
                   Margin="0,16,0,0"
@@ -47,14 +71,15 @@
             </StackPanel>
         </GroupBox>
 
-        <StackPanel Grid.Row="3"
-                    Margin="0,16,0,0"
-                    HorizontalAlignment="Right"
-                    Orientation="Horizontal">
+        <WrapPanel Grid.Row="3"
+                   Margin="0,16,0,0"
+                   HorizontalAlignment="Right">
             <Button Width="120" Margin="0,0,8,0" Click="ToggleTrackingClick">Pause / Resume</Button>
             <Button Width="120" Margin="0,0,8,0" Click="ExportCsvClick">Export CSV</Button>
             <Button Width="120" Margin="0,0,8,0" Click="ExportJsonClick">Export JSON</Button>
+            <Button Width="140" Margin="0,0,8,0" Click="ExportTracksCsvClick">Export Tracks CSV</Button>
+            <Button Width="140" Margin="0,0,8,0" Click="ExportTracksJsonClick">Export Tracks JSON</Button>
             <Button Width="150" Click="OpenDatabaseFolderClick">Open Database Folder</Button>
-        </StackPanel>
+        </WrapPanel>
     </Grid>
 </Window>

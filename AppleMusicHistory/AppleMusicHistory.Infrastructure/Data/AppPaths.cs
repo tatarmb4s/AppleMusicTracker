@@ -12,6 +12,8 @@ public static class AppPaths
 
     public static string LogsDirectory => Path.Combine(AppDataDirectory, "logs");
 
+    public static string ArtworkDirectory => Path.Combine(AppDataDirectory, "artwork");
+
     public static string SettingsPath => Path.Combine(AppDataDirectory, "settings.json");
 
     public static string StartupShortcutPath => Path.Combine(

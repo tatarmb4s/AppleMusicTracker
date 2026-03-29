@@ -20,7 +20,7 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
         _logger = logger;
     }
 
-    public async Task<TrackMetadata?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
+    public async Task<TrackEnrichmentResult?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_developerToken))
         {
@@ -35,19 +35,12 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
                 return null;
             }
 
-            var variants = ExtractAudioVariants(song.Value);
-            if (variants.Count == 0)
-            {
-                return null;
-            }
+            var songId = song.Value.GetProperty("id").GetString();
+            var detailedSong = string.IsNullOrWhiteSpace(songId)
+                ? song.Value
+                : await LookupSongAsync(songId, cancellationToken).ConfigureAwait(false) ?? song.Value;
 
-            return new TrackMetadata(
-                null,
-                null,
-                null,
-                null,
-                JsonSerializer.Serialize(variants),
-                DateTimeOffset.UtcNow);
+            return MapSong(detailedSong, DateTimeOffset.UtcNow);
         }
         catch (Exception ex)
         {
@@ -81,17 +74,41 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
             return null;
         }
 
-        JsonElement? fallback = null;
+        JsonElement? best = null;
+        var bestScore = int.MinValue;
         foreach (var song in data.EnumerateArray())
         {
-            fallback ??= song.Clone();
-            if (MatchesFingerprint(song, fingerprint))
+            var score = ScoreCandidate(song, fingerprint);
+            if (score > bestScore)
             {
-                return song.Clone();
+                best = song.Clone();
+                bestScore = score;
             }
         }
 
-        return fallback;
+        return bestScore >= 100 ? best : null;
+    }
+
+    private async Task<JsonElement?> LookupSongAsync(string songId, CancellationToken cancellationToken)
+    {
+        var url = $"https://api.music.apple.com/v1/catalog/{_storefront}/songs/{songId}?include=albums,artists";
+        using var request = CreateRequest(url);
+        using var response = await HttpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (!document.RootElement.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array
+            || data.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        return data[0].Clone();
     }
 
     private HttpRequestMessage CreateRequest(string url)
@@ -101,32 +118,129 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
         return request;
     }
 
-    private static bool MatchesFingerprint(JsonElement song, TrackFingerprint fingerprint)
+    private static int ScoreCandidate(JsonElement song, TrackFingerprint fingerprint)
     {
         if (!song.TryGetProperty("attributes", out var attributes))
         {
-            return false;
+            return int.MinValue;
         }
 
-        var title = attributes.TryGetProperty("name", out var nameElement) ? TrackFingerprint.Normalize(nameElement.GetString()) : string.Empty;
-        var artist = attributes.TryGetProperty("artistName", out var artistElement) ? TrackFingerprint.Normalize(artistElement.GetString()) : string.Empty;
-        var album = attributes.TryGetProperty("albumName", out var albumElement) ? TrackFingerprint.Normalize(albumElement.GetString()) : string.Empty;
+        var title = TrackFingerprint.Normalize(TryGetString(attributes, "name"));
+        var artist = TrackFingerprint.Normalize(TryGetString(attributes, "artistName"));
+        if (title != fingerprint.NormalizedTitle || artist != fingerprint.NormalizedArtist)
+        {
+            return int.MinValue;
+        }
 
-        return title == fingerprint.NormalizedTitle
-            && artist == fingerprint.NormalizedArtist
-            && (string.IsNullOrWhiteSpace(fingerprint.NormalizedAlbum) || album == fingerprint.NormalizedAlbum);
+        var score = 100;
+        var album = TrackFingerprint.Normalize(TryGetString(attributes, "albumName"));
+        if (!string.IsNullOrWhiteSpace(fingerprint.NormalizedAlbum) && album == fingerprint.NormalizedAlbum)
+        {
+            score += 25;
+        }
+
+        return score;
     }
 
-    private static List<string> ExtractAudioVariants(JsonElement song)
+    private TrackEnrichmentResult MapSong(JsonElement song, DateTimeOffset enrichedAtUtc)
+    {
+        var attributes = song.GetProperty("attributes");
+        var artworkUrl = GetArtworkUrl(attributes, out var artworkWidth, out var artworkHeight);
+        var genreNames = TryGetStringArray(attributes, "genreNames");
+        var audioVariants = ExtractAudioVariants(song);
+        var albumId = GetRelatedId(song, "albums", out var albumUrl);
+        var artistId = GetRelatedId(song, "artists", out var artistUrl);
+
+        return new TrackEnrichmentResult(
+            TryGetString(attributes, "url"),
+            albumUrl,
+            artistUrl,
+            song.GetProperty("id").GetString(),
+            albumId,
+            artistId,
+            null,
+            null,
+            null,
+            TryGetInt32(attributes, "durationInMillis") is { } durationMs ? durationMs / 1000 : null,
+            TryGetDate(attributes, "releaseDate"),
+            TryGetString(attributes, "composerName"),
+            genreNames,
+            TryGetInt32(attributes, "trackNumber"),
+            null,
+            TryGetInt32(attributes, "discNumber"),
+            null,
+            TryGetString(attributes, "isrc"),
+            TryGetPreviewUrl(attributes),
+            TryGetString(attributes, "contentRating"),
+            audioVariants,
+            artworkUrl,
+            artworkWidth,
+            artworkHeight,
+            _storefront,
+            ["catalog"],
+            null,
+            null,
+            song.GetRawText(),
+            enrichedAtUtc);
+    }
+
+    private static string? GetArtworkUrl(JsonElement attributes, out int? width, out int? height)
+    {
+        width = null;
+        height = null;
+        if (!attributes.TryGetProperty("artwork", out var artwork))
+        {
+            return null;
+        }
+
+        width = TryGetInt32(artwork, "width");
+        height = TryGetInt32(artwork, "height");
+        var template = TryGetString(artwork, "url");
+        if (string.IsNullOrWhiteSpace(template))
+        {
+            return null;
+        }
+
+        var resolvedWidth = width ?? 1000;
+        var resolvedHeight = height ?? 1000;
+        return template
+            .Replace("{w}", resolvedWidth.ToString(), StringComparison.Ordinal)
+            .Replace("{h}", resolvedHeight.ToString(), StringComparison.Ordinal)
+            .Replace("{f}", "jpg", StringComparison.Ordinal);
+    }
+
+    private static string? GetRelatedId(JsonElement song, string relationshipName, out string? url)
+    {
+        url = null;
+        if (!song.TryGetProperty("relationships", out var relationships)
+            || !relationships.TryGetProperty(relationshipName, out var relationship)
+            || !relationship.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array
+            || data.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        var first = data[0];
+        if (first.TryGetProperty("attributes", out var attributes))
+        {
+            url = TryGetString(attributes, "url");
+        }
+
+        return first.TryGetProperty("id", out var id) ? id.GetString() : null;
+    }
+
+    private static IReadOnlyList<string>? ExtractAudioVariants(JsonElement song)
     {
         var values = new List<string>();
         CollectAudioVariantValues(song, values);
-
-        return values
+        var normalized = values
             .Select(NormalizeCatalogVariant)
+            .OfType<string>()
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.Ordinal)
-            .ToList()!;
+            .ToArray();
+        return normalized.Length == 0 ? null : normalized;
     }
 
     private static void CollectAudioVariantValues(JsonElement element, List<string> values)
@@ -139,19 +253,18 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
                     if (property.NameEquals("audioVariants") || property.NameEquals("audioTraits"))
                     {
                         CollectStringValues(property.Value, values);
-                        continue;
                     }
-
-                    CollectAudioVariantValues(property.Value, values);
+                    else
+                    {
+                        CollectAudioVariantValues(property.Value, values);
+                    }
                 }
-
                 break;
             case JsonValueKind.Array:
                 foreach (var item in element.EnumerateArray())
                 {
                     CollectAudioVariantValues(item, values);
                 }
-
                 break;
         }
     }
@@ -196,5 +309,45 @@ public sealed class AppleMusicCatalogMetadataEnricher : ITrackMetadataEnricher
             PlaybackAudioVariant.Other => sanitized,
             _ => sanitized
         };
+    }
+
+    private static string? TryGetString(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    private static int? TryGetInt32(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) && value.TryGetInt32(out var parsed) ? parsed : null;
+
+    private static DateTimeOffset? TryGetDate(JsonElement element, string name)
+        => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && DateTimeOffset.TryParse(value.GetString(), out var parsed)
+            ? parsed
+            : null;
+
+    private static IReadOnlyList<string>? TryGetStringArray(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var values = value.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()!)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        return values.Length == 0 ? null : values;
+    }
+
+    private static string? TryGetPreviewUrl(JsonElement attributes)
+    {
+        if (!attributes.TryGetProperty("previews", out var previews)
+            || previews.ValueKind != JsonValueKind.Array
+            || previews.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        return previews[0].TryGetProperty("url", out var url) && url.ValueKind == JsonValueKind.String
+            ? url.GetString()
+            : null;
     }
 }

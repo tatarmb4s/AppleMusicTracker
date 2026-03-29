@@ -4,5 +4,5 @@ namespace AppleMusicHistory.Core.Abstractions;
 
 public interface ITrackMetadataEnricher
 {
-    Task<TrackMetadata?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken);
+    Task<TrackEnrichmentResult?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken);
 }

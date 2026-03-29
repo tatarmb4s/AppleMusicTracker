@@ -8,6 +8,7 @@ public sealed class PlaybackSessionCoordinator
 {
     private readonly IHistoryRepository _repository;
     private readonly ITrackMetadataEnricher? _metadataEnricher;
+    private readonly IArtworkCache? _artworkCache;
     private readonly TrackerOptions _options;
     private readonly long _appRunId;
     private ActiveSessionState? _active;
@@ -16,23 +17,21 @@ public sealed class PlaybackSessionCoordinator
         IHistoryRepository repository,
         TrackerOptions options,
         long appRunId,
-        ITrackMetadataEnricher? metadataEnricher = null)
+        ITrackMetadataEnricher? metadataEnricher = null,
+        IArtworkCache? artworkCache = null)
     {
         _repository = repository;
         _options = options;
         _appRunId = appRunId;
         _metadataEnricher = options.MetadataEnrichmentEnabled ? metadataEnricher : null;
+        _artworkCache = options.MetadataEnrichmentEnabled ? artworkCache : null;
     }
 
     public ListeningSessionRecord? ActiveSession => _active?.Record;
 
-    public async Task HandleSnapshotAsync(PlaybackSnapshot? snapshot, CancellationToken cancellationToken)
+    public async Task HandleSnapshotAsync(PlaybackSnapshot snapshot, CancellationToken cancellationToken)
     {
-        if (snapshot is null)
-        {
-            await CloseActiveSessionAsync(SessionEndReason.AppClosed, cancellationToken).ConfigureAwait(false);
-            return;
-        }
+        ArgumentNullException.ThrowIfNull(snapshot);
 
         if (_active is null)
         {
@@ -67,6 +66,9 @@ public sealed class PlaybackSessionCoordinator
     public Task StopAsync(CancellationToken cancellationToken) => CloseActiveSessionAsync(SessionEndReason.TrackerStopped, cancellationToken);
 
     public Task PauseTrackingAsync(CancellationToken cancellationToken) => CloseActiveSessionAsync(SessionEndReason.TrackingPaused, cancellationToken);
+
+    public Task HandlePlaybackUnavailableAsync(SessionEndReason reason, CancellationToken cancellationToken)
+        => CloseActiveSessionAsync(reason, cancellationToken);
 
     private async Task StartSessionAsync(PlaybackSnapshot snapshot, int replayIndex, CancellationToken cancellationToken)
     {
@@ -294,28 +296,67 @@ public sealed class PlaybackSessionCoordinator
                 return;
             }
 
-            await _repository.UpsertTrackAsync(
-                new TrackUpsert(
-                    fingerprint,
-                    track.Title,
-                    track.Artist,
-                    track.Album,
-                    track.Subtitle,
-                    DateTimeOffset.UtcNow,
-                    metadata.DurationSeconds ?? track.DurationSeconds,
-                    metadata.SongUrl ?? track.SongUrl,
-                    metadata.ArtistUrl ?? track.ArtistUrl,
-                    metadata.ArtworkUrl ?? track.ArtworkUrl,
-                    metadata.CatalogAudioVariantsJson ?? track.CatalogAudioVariantsJson,
-                    track.LastObservedAudioBadgeRaw,
-                    track.LastObservedAudioVariant,
-                    metadata.EnrichedAtUtc),
+            CachedArtworkResult? cachedArtwork = null;
+            if (_artworkCache is not null && !string.IsNullOrWhiteSpace(metadata.ArtworkUrl))
+            {
+                cachedArtwork = await _artworkCache.CacheAsync(metadata.ArtworkUrl, CancellationToken.None).ConfigureAwait(false);
+            }
+
+            await _repository.UpsertTrackMetadataAsync(
+                track.TrackId,
+                new TrackMetadataUpsert(
+                    metadata.AppleMusicSongUrl,
+                    metadata.AppleMusicAlbumUrl,
+                    metadata.AppleMusicArtistUrl,
+                    metadata.CatalogSongId,
+                    metadata.CatalogAlbumId,
+                    metadata.CatalogArtistId,
+                    metadata.ItunesTrackId,
+                    metadata.ItunesCollectionId,
+                    metadata.ItunesArtistId,
+                    metadata.DurationSeconds,
+                    metadata.ReleaseDateUtc,
+                    metadata.ComposerName,
+                    SerializeStringList(metadata.GenreNames),
+                    metadata.TrackNumber,
+                    metadata.TrackCount,
+                    metadata.DiscNumber,
+                    metadata.DiscCount,
+                    metadata.Isrc,
+                    metadata.PreviewUrl,
+                    metadata.ContentRating,
+                    SerializeStringList(metadata.CatalogAudioVariants),
+                    metadata.ArtworkUrl,
+                    metadata.ArtworkWidth,
+                    metadata.ArtworkHeight,
+                    cachedArtwork?.RelativePath,
+                    metadata.Storefront,
+                    SerializeStringList(metadata.MetadataSources),
+                    metadata.WebPayloadJson,
+                    metadata.ItunesPayloadJson,
+                    metadata.CatalogPayloadJson,
+                    metadata.EnrichedAtUtc,
+                    cachedArtwork?.CachedAtUtc),
                 CancellationToken.None).ConfigureAwait(false);
         }
         catch
         {
             // Capture must continue even when enrichment fails.
         }
+    }
+
+    private static string? SerializeStringList(IReadOnlyList<string>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var distinct = values
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return distinct.Length == 0 ? null : JsonSerializer.Serialize(distinct);
     }
 
     private static double CalculateHeardSecondsDelta(ActiveSessionState active, PlaybackSnapshot snapshot)

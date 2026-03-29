@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 using AppleMusicHistory.Core.Abstractions;
@@ -11,22 +12,23 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
 {
     private static readonly HttpClient HttpClient = new();
     private static readonly Regex DurationRegex = new(@"(\d{1,3}:\d{2})", RegexOptions.Compiled);
-    private static readonly Regex ImageUrlRegex = new(@"http\S*?(?= \d{2,3}w)", RegexOptions.Compiled);
+    private static readonly Regex ArtworkSizeRegex = new(@"/(?<width>\d+)x(?<height>\d+)", RegexOptions.Compiled);
     private readonly string _region;
     private readonly FileLogger? _logger;
 
     public AppleMusicWebMetadataEnricher(string region = "us", FileLogger? logger = null)
     {
-        _region = region.ToLowerInvariant();
+        _region = string.IsNullOrWhiteSpace(region) ? "us" : region.ToLowerInvariant();
         _logger = logger;
     }
 
-    public async Task<TrackMetadata?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
+    public async Task<TrackEnrichmentResult?> EnrichAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await SearchSongsAsync(fingerprint, cancellationToken).ConfigureAwait(false)
-                ?? await SearchTopResultsAsync(fingerprint, cancellationToken).ConfigureAwait(false);
+            var searchUrl = GetSearchUrl(fingerprint);
+            var result = await SearchSongsAsync(searchUrl, fingerprint, cancellationToken).ConfigureAwait(false)
+                ?? await SearchTopResultsAsync(searchUrl, fingerprint, cancellationToken).ConfigureAwait(false);
 
             if (result is null)
             {
@@ -35,27 +37,72 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
 
             var songUrl = GetSongUrl(result);
             var artistUrl = GetArtistUrl(result);
+            var albumUrl = GetAlbumUrl(result);
             var artworkUrl = GetLargestImageUrl(result);
+            var (artworkWidth, artworkHeight) = ParseArtworkDimensions(artworkUrl);
             var durationSeconds = songUrl is null
                 ? null
                 : await GetSongDurationFromAlbumPageAsync(songUrl, fingerprint, cancellationToken).ConfigureAwait(false);
 
-            return new TrackMetadata(durationSeconds, songUrl, artistUrl, artworkUrl, null, DateTimeOffset.UtcNow);
+            var payload = JsonSerializer.Serialize(new
+            {
+                searchUrl,
+                songUrl,
+                albumUrl,
+                artistUrl,
+                artworkUrl,
+                artworkWidth,
+                artworkHeight,
+                durationSeconds,
+                matchedResultHtml = result.OuterHtml
+            });
+
+            return new TrackEnrichmentResult(
+                songUrl,
+                albumUrl,
+                artistUrl,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                durationSeconds,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                artworkUrl,
+                artworkWidth,
+                artworkHeight,
+                _region,
+                ["web"],
+                payload,
+                null,
+                null,
+                DateTimeOffset.UtcNow);
         }
         catch (Exception ex)
         {
             if (_logger is not null)
             {
-                await _logger.ErrorAsync($"Metadata enrichment failed: {ex.Message}", cancellationToken).ConfigureAwait(false);
+                await _logger.ErrorAsync($"Web metadata enrichment failed: {ex.Message}", cancellationToken).ConfigureAwait(false);
             }
 
             return null;
         }
     }
 
-    private async Task<HtmlNode?> SearchSongsAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
+    private async Task<HtmlNode?> SearchSongsAsync(string searchUrl, TrackFingerprint fingerprint, CancellationToken cancellationToken)
     {
-        var doc = await GetDocumentAsync(GetSearchUrl(fingerprint), cancellationToken).ConfigureAwait(false);
+        var doc = await GetDocumentAsync(searchUrl, cancellationToken).ConfigureAwait(false);
         try
         {
             var nodes = doc.DocumentNode
@@ -76,15 +123,14 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
         }
     }
 
-    private async Task<HtmlNode?> SearchTopResultsAsync(TrackFingerprint fingerprint, CancellationToken cancellationToken)
+    private async Task<HtmlNode?> SearchTopResultsAsync(string searchUrl, TrackFingerprint fingerprint, CancellationToken cancellationToken)
     {
-        var doc = await GetDocumentAsync(GetSearchUrl(fingerprint), cancellationToken).ConfigureAwait(false);
+        var doc = await GetDocumentAsync(searchUrl, cancellationToken).ConfigureAwait(false);
         try
         {
             var nodes = doc.DocumentNode
                 .Descendants("ul")
                 .FirstOrDefault(x => x.Attributes["class"]?.Value.Contains("grid--top-results", StringComparison.Ordinal) == true);
-
             if (nodes is null)
             {
                 return null;
@@ -93,7 +139,6 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
             var results = nodes
                 .Descendants("li")
                 .Where(x => x.Attributes.Contains("data-testid") && x.Attributes["data-testid"].Value == "grid-item");
-
             return results.FirstOrDefault(result => MatchesFingerprint(result, fingerprint));
         }
         catch
@@ -104,14 +149,14 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
 
     private static bool MatchesFingerprint(HtmlNode result, TrackFingerprint fingerprint)
     {
-        var text = HttpUtility.HtmlDecode(result.InnerText).ToLowerInvariant();
+        var text = TrackFingerprint.Normalize(HttpUtility.HtmlDecode(result.InnerText));
         return text.Contains(fingerprint.NormalizedTitle, StringComparison.Ordinal)
             && text.Contains(fingerprint.NormalizedArtist, StringComparison.Ordinal);
     }
 
     private string GetSearchUrl(TrackFingerprint fingerprint)
     {
-        var rawSearch = $"{fingerprint.NormalizedTitle} {fingerprint.NormalizedAlbum} {fingerprint.NormalizedArtist}";
+        var rawSearch = $"{fingerprint.NormalizedTitle} {fingerprint.NormalizedAlbum} {fingerprint.NormalizedArtist}".Trim();
         while (rawSearch.Length > 100)
         {
             rawSearch = rawSearch[..rawSearch.LastIndexOf(' ')];
@@ -120,48 +165,36 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
         return $"https://music.apple.com/{_region}/search?term={Uri.EscapeDataString(rawSearch)}";
     }
 
-    private static string? GetSongUrl(HtmlNode source)
-    {
-        var node = source.SelectSingleNode(".//a[@data-testid='click-action']");
-        var href = node?.GetAttributeValue("href", string.Empty);
-        return string.IsNullOrWhiteSpace(href) ? null : href;
-    }
+    private static string? GetSongUrl(HtmlNode source) => GetAbsoluteAppleMusicUrl(source.SelectSingleNode(".//a[@data-testid='click-action']")?.GetAttributeValue("href", string.Empty));
 
     private static string? GetArtistUrl(HtmlNode source)
     {
-        var subtitleNode = source.Descendants("span")
-            .FirstOrDefault(x => x.Attributes.Contains("data-testid") && x.Attributes["data-testid"].Value == "track-lockup-subtitle");
-        var artistLink = subtitleNode?.Descendants("a")
-            .FirstOrDefault(x => x.Attributes["href"].Value.Contains("/artist/", StringComparison.Ordinal));
-        var href = artistLink?.GetAttributeValue("href", string.Empty);
-        return string.IsNullOrWhiteSpace(href) ? null : href;
+        var artistLink = source.Descendants("a")
+            .FirstOrDefault(x => x.GetAttributeValue("href", string.Empty).Contains("/artist/", StringComparison.Ordinal));
+        return GetAbsoluteAppleMusicUrl(artistLink?.GetAttributeValue("href", string.Empty));
+    }
+
+    private static string? GetAlbumUrl(HtmlNode source)
+    {
+        var albumLink = source.Descendants("a")
+            .FirstOrDefault(x => x.GetAttributeValue("href", string.Empty).Contains("/album/", StringComparison.Ordinal));
+        return GetAbsoluteAppleMusicUrl(albumLink?.GetAttributeValue("href", string.Empty));
     }
 
     private static string? GetLargestImageUrl(HtmlNode source)
     {
-        var imgSources = source
-            .Descendants("source")
+        var srcset = source.Descendants("source")
             .Where(x => x.Attributes["type"]?.Value == "image/jpeg")
-            .ToList();
-
-        if (imgSources.Count == 0)
-        {
-            return null;
-        }
-
-        var srcset = imgSources[0].Attributes["srcset"]?.Value;
+            .Select(x => x.Attributes["srcset"]?.Value)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
         if (string.IsNullOrWhiteSpace(srcset))
         {
             return null;
         }
 
-        var match = ImageUrlRegex.Matches(srcset).LastOrDefault();
-        if (match is null)
-        {
-            return null;
-        }
-
-        return Regex.Replace(match.Value, @"/\d+x\d+.*\.jpg$", "/1024x1024bb.jpg");
+        var parts = srcset.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var lastUrl = parts.LastOrDefault()?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return string.IsNullOrWhiteSpace(lastUrl) ? null : lastUrl;
     }
 
     private async Task<int?> GetSongDurationFromAlbumPageAsync(string url, TrackFingerprint fingerprint, CancellationToken cancellationToken)
@@ -170,21 +203,21 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
         try
         {
             var durationNode = doc.DocumentNode.Descendants("meta")
-                .FirstOrDefault(x => x.Attributes.Contains("property") && x.Attributes["property"].Value == "music:song:duration");
+                .FirstOrDefault(x => x.GetAttributeValue("property", string.Empty) == "music:song:duration");
             if (durationNode is not null)
             {
                 return ParseIsoDuration(durationNode.GetAttributeValue("content", string.Empty));
             }
 
             var descNode = doc.DocumentNode.Descendants("meta")
-                .FirstOrDefault(x => x.Attributes.Contains("property") && x.Attributes["property"].Value == "og:description");
+                .FirstOrDefault(x => x.GetAttributeValue("property", string.Empty) == "og:description");
             var titleNode = doc.DocumentNode.Descendants("meta")
-                .FirstOrDefault(x => x.Attributes.Contains("property") && x.Attributes["property"].Value == "og:title");
+                .FirstOrDefault(x => x.GetAttributeValue("property", string.Empty) == "og:title");
 
             var decodedDesc = HttpUtility.HtmlDecode(descNode?.GetAttributeValue("content", string.Empty) ?? string.Empty);
             var decodedTitle = HttpUtility.HtmlDecode(titleNode?.GetAttributeValue("content", string.Empty) ?? string.Empty);
-            if (!decodedDesc.Contains(fingerprint.NormalizedTitle, StringComparison.OrdinalIgnoreCase)
-                && !decodedTitle.Contains(fingerprint.NormalizedTitle, StringComparison.OrdinalIgnoreCase))
+            if (!TrackFingerprint.Normalize(decodedDesc).Contains(fingerprint.NormalizedTitle, StringComparison.Ordinal)
+                && !TrackFingerprint.Normalize(decodedTitle).Contains(fingerprint.NormalizedTitle, StringComparison.Ordinal))
             {
                 return null;
             }
@@ -198,13 +231,37 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
         }
     }
 
-    private async Task<HtmlDocument> GetDocumentAsync(string url, CancellationToken cancellationToken)
+    private static async Task<HtmlDocument> GetDocumentAsync(string url, CancellationToken cancellationToken)
     {
-        var cleanUrl = HttpUtility.HtmlEncode(url.Replace("&", " ", StringComparison.Ordinal));
-        var response = await HttpClient.GetStringAsync(cleanUrl, cancellationToken).ConfigureAwait(false);
+        var response = await HttpClient.GetStringAsync(url, cancellationToken).ConfigureAwait(false);
         var doc = new HtmlDocument();
         doc.LoadHtml(response);
         return doc;
+    }
+
+    private static (int? Width, int? Height) ParseArtworkDimensions(string? artworkUrl)
+    {
+        if (string.IsNullOrWhiteSpace(artworkUrl))
+        {
+            return (null, null);
+        }
+
+        var match = ArtworkSizeRegex.Match(artworkUrl);
+        return match.Success
+            ? (int.Parse(match.Groups["width"].Value), int.Parse(match.Groups["height"].Value))
+            : (null, null);
+    }
+
+    private static string? GetAbsoluteAppleMusicUrl(string? href)
+    {
+        if (string.IsNullOrWhiteSpace(href))
+        {
+            return null;
+        }
+
+        return href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+            ? href
+            : $"https://music.apple.com{href}";
     }
 
     private static int? ParseIsoDuration(string value)
@@ -218,7 +275,6 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
         var minutes = Regex.Match(value, @"(\d+)M");
         var seconds = Regex.Match(value, @"(\d+)S");
         var totalSeconds = 0;
-
         if (hours.Success)
         {
             totalSeconds += int.Parse(hours.Groups[1].Value) * 3600;
@@ -240,12 +296,7 @@ public sealed class AppleMusicWebMetadataEnricher : ITrackMetadataEnricher
     private static int? ParseClockDuration(string value)
     {
         var parts = value.Split(':');
-        if (parts.Length != 2)
-        {
-            return null;
-        }
-
-        return int.TryParse(parts[0], out var minutes) && int.TryParse(parts[1], out var seconds)
+        return parts.Length == 2 && int.TryParse(parts[0], out var minutes) && int.TryParse(parts[1], out var seconds)
             ? minutes * 60 + seconds
             : null;
     }

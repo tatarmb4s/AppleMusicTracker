@@ -16,6 +16,9 @@ public sealed class TrackerRuntime : IAsyncDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly TrackerOptions _options;
     private TrackerSettings _settings;
+    private AppleMusicSnapshotReadResult _lastReadResult = AppleMusicSnapshotReadResult.AppNotRunning();
+    private TrackDetailsRecord? _currentTrackDetails;
+    private DateTimeOffset? _noTrackSinceUtc;
     private Task? _loopTask;
 
     public TrackerRuntime(
@@ -25,7 +28,8 @@ public sealed class TrackerRuntime : IAsyncDisposable
         JsonTrackerSettingsStore settingsStore,
         TrackerSettings settings,
         FileLogger logger,
-        long appRunId)
+        long appRunId,
+        IArtworkCache? artworkCache = null)
     {
         _snapshotSource = snapshotSource;
         _repository = repository;
@@ -33,7 +37,7 @@ public sealed class TrackerRuntime : IAsyncDisposable
         _settings = settings;
         _logger = logger;
         _options = settings.Options;
-        _coordinator = new PlaybackSessionCoordinator(repository, settings.Options, appRunId, metadataEnricher);
+        _coordinator = new PlaybackSessionCoordinator(repository, settings.Options, appRunId, metadataEnricher, artworkCache);
     }
 
     public event Action<RuntimeStatus>? StatusChanged;
@@ -59,7 +63,7 @@ public sealed class TrackerRuntime : IAsyncDisposable
         }
 
         var stats = await _repository.GetStatisticsAsync(CancellationToken.None).ConfigureAwait(false);
-        StatusChanged?.Invoke(new RuntimeStatus(isPaused, null, _coordinator.ActiveSession, stats));
+        StatusChanged?.Invoke(CreateStatus(isPaused, stats));
     }
 
     public async ValueTask DisposeAsync()
@@ -86,23 +90,21 @@ public sealed class TrackerRuntime : IAsyncDisposable
         {
             try
             {
-                PlaybackSnapshot? snapshot = null;
+                var currentResult = _lastReadResult;
                 if (!_settings.TrackingPaused)
                 {
-                    snapshot = await _snapshotSource.GetCurrentAsync(_cts.Token).ConfigureAwait(false);
-                    await _coordinator.HandleSnapshotAsync(snapshot, _cts.Token).ConfigureAwait(false);
+                    currentResult = await _snapshotSource.GetCurrentAsync(_cts.Token).ConfigureAwait(false);
+                    _lastReadResult = currentResult;
+                    await HandleReadResultAsync(currentResult, _cts.Token).ConfigureAwait(false);
                 }
 
                 var stats = await _repository.GetStatisticsAsync(_cts.Token).ConfigureAwait(false);
-                StatusChanged?.Invoke(new RuntimeStatus(_settings.TrackingPaused, snapshot, _coordinator.ActiveSession, stats));
+                _currentTrackDetails = _coordinator.ActiveSession is null
+                    ? null
+                    : await _repository.GetTrackDetailsAsync(_coordinator.ActiveSession.TrackId, _cts.Token).ConfigureAwait(false);
+                StatusChanged?.Invoke(CreateStatus(_settings.TrackingPaused, stats));
 
-                var delay = _settings.TrackingPaused
-                    ? _options.PausedPollingInterval
-                    : snapshot is null
-                        ? _options.MissingAppPollingInterval
-                        : snapshot.IsPaused
-                            ? _options.PausedPollingInterval
-                            : _options.ActivePollingInterval;
+                var delay = GetDelay(currentResult, _settings.TrackingPaused);
 
                 await Task.Delay(delay, _cts.Token).ConfigureAwait(false);
             }
@@ -116,5 +118,78 @@ public sealed class TrackerRuntime : IAsyncDisposable
                 await Task.Delay(TimeSpan.FromSeconds(5), _cts.Token).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task HandleReadResultAsync(AppleMusicSnapshotReadResult readResult, CancellationToken cancellationToken)
+    {
+        switch (readResult.State)
+        {
+            case AppleMusicSnapshotReadState.Available:
+                _noTrackSinceUtc = null;
+                await _coordinator.HandleSnapshotAsync(readResult.Snapshot!, cancellationToken).ConfigureAwait(false);
+                break;
+
+            case AppleMusicSnapshotReadState.AppNotRunning:
+                _noTrackSinceUtc = null;
+                await _coordinator.HandlePlaybackUnavailableAsync(SessionEndReason.AppClosed, cancellationToken).ConfigureAwait(false);
+                break;
+
+            case AppleMusicSnapshotReadState.Recovering:
+                _noTrackSinceUtc = null;
+                break;
+
+            case AppleMusicSnapshotReadState.NoTrackDetected:
+                await HandleNoTrackDetectedAsync(cancellationToken).ConfigureAwait(false);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(readResult.State), readResult.State, null);
+        }
+    }
+
+    private async Task HandleNoTrackDetectedAsync(CancellationToken cancellationToken)
+    {
+        if (_coordinator.ActiveSession is null)
+        {
+            _noTrackSinceUtc = null;
+            return;
+        }
+
+        var observedAt = DateTimeOffset.UtcNow;
+        _noTrackSinceUtc ??= observedAt;
+        if (observedAt - _noTrackSinceUtc.Value < _options.MissingAppPollingInterval)
+        {
+            return;
+        }
+
+        await _coordinator.HandlePlaybackUnavailableAsync(SessionEndReason.NoTrackDetected, cancellationToken).ConfigureAwait(false);
+        _noTrackSinceUtc = null;
+    }
+
+    private RuntimeStatus CreateStatus(bool isTrackingPaused, TrackerStatistics stats)
+    {
+        return new RuntimeStatus(
+            isTrackingPaused,
+            _lastReadResult.State,
+            _lastReadResult.Snapshot,
+            _lastReadResult.DiagnosticMessage,
+            _coordinator.ActiveSession,
+            _currentTrackDetails,
+            stats);
+    }
+
+    private TimeSpan GetDelay(AppleMusicSnapshotReadResult readResult, bool isTrackingPaused)
+    {
+        if (isTrackingPaused)
+        {
+            return _options.PausedPollingInterval;
+        }
+
+        return readResult.State switch
+        {
+            AppleMusicSnapshotReadState.Available when readResult.Snapshot?.IsPaused == true => _options.PausedPollingInterval,
+            AppleMusicSnapshotReadState.Available => _options.ActivePollingInterval,
+            _ => _options.MissingAppPollingInterval
+        };
     }
 }

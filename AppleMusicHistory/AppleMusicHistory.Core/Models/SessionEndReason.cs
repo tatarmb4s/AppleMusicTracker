@@ -8,5 +8,6 @@ public enum SessionEndReason
     AppClosed = 4,
     TrackerStopped = 5,
     TrackingPaused = 6,
-    RecoveredAfterCrash = 7
+    RecoveredAfterCrash = 7,
+    NoTrackDetected = 8
 }
