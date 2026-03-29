@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="AppleMusicHistory.WinUI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="AppleMusicTracker">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop Kind="BaseAlt" />
+    </Window.SystemBackdrop>
+
+    <Grid x:Name="RootGrid">
+        <Grid Background="{Binding BackdropBrush}" />
+        <Ellipse x:Name="GlowOrbOne"
+                 Width="900"
+                 Height="900"
+                 Margin="0,-120,-240,0"
+                 HorizontalAlignment="Right"
+                 VerticalAlignment="Center"
+                 Fill="{Binding AccentGlowBrush}"
+                 IsHitTestVisible="False"
+                 Opacity="0.8" />
+        <Ellipse x:Name="GlowOrbTwo"
+                 Width="720"
+                 Height="720"
+                 Margin="-180,0,0,-180"
+                 HorizontalAlignment="Left"
+                 VerticalAlignment="Bottom"
+                 Fill="{Binding SecondaryGlowBrush}"
+                 IsHitTestVisible="False"
+                 Opacity="0.72" />
+        <Image x:Name="BackdropArtworkOne"
+               Width="980"
+               Height="980"
+               Margin="0,0,-180,-40"
+               HorizontalAlignment="Right"
+               VerticalAlignment="Center"
+               IsHitTestVisible="False"
+               Opacity="0.12"
+               Source="{Binding ArtworkImage}"
+               Stretch="UniformToFill" />
+        <Image x:Name="BackdropArtworkTwo"
+               Width="720"
+               Height="720"
+               Margin="-140,120,0,-140"
+               HorizontalAlignment="Left"
+               VerticalAlignment="Bottom"
+               IsHitTestVisible="False"
+               Opacity="0.1"
+               Source="{Binding ArtworkImage}"
+               Stretch="UniformToFill" />
+        <Rectangle Fill="#33040A14" IsHitTestVisible="False" />
+
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid x:Name="AppTitleBar" Height="44">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Border Width="12"
+                            Height="12"
+                            Background="{Binding AccentBrush}"
+                            CornerRadius="999" />
+                    <StackPanel>
+                        <TextBlock FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Text="Apple Music Tracker" />
+                        <TextBlock FontSize="11"
+                                   Foreground="#C8FFFFFF"
+                                   Text="{Binding CurrentState.TrackerStatus}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        Padding="14,6"
+                        Background="#18FFFFFF"
+                        BorderBrush="{Binding CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="999"
+                        VerticalAlignment="Center">
+                    <TextBlock FontSize="12"
+                               Foreground="White"
+                               Text="{Binding CurrentState.AppleMusicState}" />
+                </Border>
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  Margin="0,20,0,0"
+                  ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.2*" />
+                    <ColumnDefinition Width="0.8*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Padding="30"
+                        Background="{Binding HeroCardBrush}"
+                        BorderBrush="{Binding CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="30">
+                    <Grid RowSpacing="20">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                MaxWidth="620"
+                                MinHeight="420"
+                                HorizontalAlignment="Stretch"
+                                Background="#16000000"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="26">
+                            <Grid>
+                                <Image Source="{Binding ArtworkImage}"
+                                       Stretch="UniformToFill"
+                                       Visibility="{Binding HasArtwork, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <Border Background="#22000000"
+                                        Visibility="{Binding HasArtwork, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                    <StackPanel HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Spacing="12">
+                                        <FontIcon FontSize="72"
+                                                  Foreground="#E5FFFFFF"
+                                                  Glyph="&#xE189;" />
+                                        <TextBlock FontSize="18"
+                                                   Foreground="#E5FFFFFF"
+                                                   HorizontalAlignment="Center"
+                                                   Text="Waiting for artwork" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <StackPanel Grid.Row="1" Spacing="6">
+                            <TextBlock FontSize="38"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="{Binding CurrentState.CurrentTitle}"
+                                       TextWrapping="WrapWholeWords" />
+                            <TextBlock FontSize="22"
+                                       Foreground="#D8FFFFFF"
+                                       Text="{Binding CurrentState.CurrentArtist}"
+                                       TextWrapping="WrapWholeWords" />
+                            <TextBlock FontSize="18"
+                                       Foreground="#B6FFFFFF"
+                                       Text="{Binding CurrentState.CurrentAlbum}"
+                                       TextWrapping="WrapWholeWords" />
+                            <Border Margin="0,10,0,0"
+                                    Padding="14,8"
+                                    HorizontalAlignment="Left"
+                                    Background="#16000000"
+                                    CornerRadius="999">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon FontSize="14"
+                                              Foreground="{Binding AccentBrush}"
+                                              Glyph="&#xE768;" />
+                                    <TextBlock FontSize="14"
+                                               Foreground="White"
+                                               Text="{Binding CurrentState.CurrentAudioFormat}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <Grid Grid.Row="2"
+                              ColumnSpacing="14"
+                              VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock VerticalAlignment="Center"
+                                       Foreground="#D8FFFFFF"
+                                       Text="{Binding CurrentState.ElapsedText}" />
+                            <ProgressBar Grid.Column="1"
+                                         Height="6"
+                                         Margin="0,2"
+                                         Background="#26FFFFFF"
+                                         Foreground="{Binding AccentBrush}"
+                                         Maximum="1"
+                                         Value="{Binding CurrentState.PlaybackProgress}" />
+                            <TextBlock Grid.Column="2"
+                                       VerticalAlignment="Center"
+                                       Foreground="#D8FFFFFF"
+                                       Text="{Binding CurrentState.RemainingText}" />
+                        </Grid>
+
+                        <StackPanel Grid.Row="3"
+                                    Spacing="10"
+                                    VerticalAlignment="Bottom">
+                            <TextBlock FontSize="15"
+                                       Foreground="#D8FFFFFF"
+                                       Text="{Binding CurrentState.ActiveSession}"
+                                       TextWrapping="WrapWholeWords" />
+                            <TextBlock FontSize="14"
+                                       Foreground="#B6FFFFFF"
+                                       Text="{Binding CurrentState.Statistics}"
+                                       TextWrapping="WrapWholeWords" />
+                            <TextBlock FontSize="14"
+                                       Foreground="#B6FFFFFF"
+                                       TextWrapping="WrapWholeWords">
+                                <Run Text="Last observed: " />
+                                <Run Text="{Binding CurrentState.LastObserved}" />
+                            </TextBlock>
+                        </StackPanel>
+
+                        <Grid Grid.Row="4"
+                              HorizontalAlignment="Center"
+                              ColumnSpacing="16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Width="56"
+                                    Height="56"
+                                    Background="#14000000"
+                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderThickness="1"
+                                    Command="{Binding OpenDatabaseFolderCommand}"
+                                    CornerRadius="28"
+                                    ToolTipService.ToolTip="Open database folder">
+                                <FontIcon FontSize="20" Glyph="&#xE838;" />
+                            </Button>
+
+                            <Button Grid.Column="1"
+                                    Width="56"
+                                    Height="56"
+                                    Background="#14000000"
+                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderThickness="1"
+                                    Click="OpenSongClick"
+                                    CornerRadius="28"
+                                    IsEnabled="{Binding HasSongUrl}"
+                                    ToolTipService.ToolTip="Open song page">
+                                <FontIcon FontSize="20" Glyph="&#xE189;" />
+                            </Button>
+
+                            <Button Grid.Column="2"
+                                    MinWidth="196"
+                                    Height="64"
+                                    Background="#F5FFFFFF"
+                                    BorderThickness="0"
+                                    Command="{Binding PauseResumeCommand}"
+                                    CornerRadius="32">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="10">
+                                    <FontIcon FontSize="18"
+                                              Foreground="#111111"
+                                              Glyph="&#xE769;" />
+                                    <TextBlock FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Foreground="#111111"
+                                               Text="{Binding PauseResumeLabel}" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button Grid.Column="3"
+                                    Width="56"
+                                    Height="56"
+                                    Background="#14000000"
+                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderThickness="1"
+                                    Click="OpenAlbumClick"
+                                    CornerRadius="28"
+                                    IsEnabled="{Binding HasAlbumUrl}"
+                                    ToolTipService.ToolTip="Open album page">
+                                <FontIcon FontSize="20" Glyph="&#xE8A5;" />
+                            </Button>
+
+                            <SplitButton Grid.Column="4"
+                                         Width="74"
+                                         Height="56"
+                                         Background="#14000000"
+                                         BorderBrush="{Binding CardBorderBrush}"
+                                         BorderThickness="1"
+                                         Click="ExportSplitButtonClick"
+                                         CornerRadius="28"
+                                         ToolTipService.ToolTip="Export">
+                                <SplitButton.Content>
+                                    <FontIcon FontSize="20" Glyph="&#xE8A4;" />
+                                </SplitButton.Content>
+                                <SplitButton.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Click="ExportSessionsCsvClick" Text="Export Sessions CSV" />
+                                        <MenuFlyoutItem Click="ExportSessionsJsonClick" Text="Export Sessions JSON" />
+                                        <MenuFlyoutItem Click="ExportTracksCsvClick" Text="Export Tracks CSV" />
+                                        <MenuFlyoutItem Click="ExportTracksJsonClick" Text="Export Tracks JSON" />
+                                    </MenuFlyout>
+                                </SplitButton.Flyout>
+                            </SplitButton>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Column="1"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="16">
+                        <Border Padding="22"
+                                Background="{Binding CardBrush}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24">
+                            <StackPanel Spacing="12">
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Status" />
+                                <TextBlock Foreground="#E8FFFFFF" Text="{Binding CurrentState.AppleMusicState}" />
+                                <TextBlock Foreground="#C0FFFFFF" Text="{Binding CurrentState.TrackerStatus}" />
+                                <TextBlock Foreground="#C0FFFFFF" Text="{Binding CurrentState.ActiveSession}" TextWrapping="WrapWholeWords" />
+                                <TextBlock Foreground="#C0FFFFFF" TextWrapping="WrapWholeWords">
+                                    <Run Text="Last observed: " />
+                                    <Run Text="{Binding CurrentState.LastObserved}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#A8FFFFFF"
+                                           Text="{Binding CurrentState.SourceDiagnosticMessage}"
+                                           TextWrapping="WrapWholeWords"
+                                           Visibility="{Binding HasDiagnosticMessage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="22"
+                                Background="{Binding CardBrush}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24">
+                            <StackPanel Spacing="12">
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Metadata" />
+                                <TextBlock Foreground="#C0FFFFFF">
+                                    <Run Text="Composer: " />
+                                    <Run Text="{Binding CurrentState.CurrentComposer}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#C0FFFFFF">
+                                    <Run Text="Release: " />
+                                    <Run Text="{Binding CurrentState.CurrentReleaseDate}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#C0FFFFFF" TextWrapping="WrapWholeWords">
+                                    <Run Text="Genres: " />
+                                    <Run Text="{Binding CurrentState.CurrentGenres}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#C0FFFFFF" TextWrapping="WrapWholeWords">
+                                    <Run Text="Track / Disc: " />
+                                    <Run Text="{Binding CurrentState.CurrentTrackNumbers}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#C0FFFFFF" TextWrapping="WrapWholeWords">
+                                    <Run Text="ISRC: " />
+                                    <Run Text="{Binding CurrentState.CurrentIsrc}" />
+                                </TextBlock>
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <HyperlinkButton Click="OpenSongClick" Content="Song" IsEnabled="{Binding HasSongUrl}" />
+                                    <HyperlinkButton Click="OpenAlbumClick" Content="Album" IsEnabled="{Binding HasAlbumUrl}" />
+                                    <HyperlinkButton Click="OpenArtistClick" Content="Artist" IsEnabled="{Binding HasArtistUrl}" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="22"
+                                Background="{Binding CardBrush}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24">
+                            <StackPanel Spacing="12">
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Statistics" />
+                                <TextBlock Foreground="#E8FFFFFF" Text="{Binding CurrentState.Statistics}" TextWrapping="WrapWholeWords" />
+                                <TextBlock Foreground="#C0FFFFFF" TextWrapping="WrapWholeWords">
+                                    <Run Text="Database: " />
+                                    <Run Text="{Binding CurrentState.DatabasePath}" />
+                                </TextBlock>
+                                <TextBlock Foreground="#A8FFFFFF" Text="{Binding CurrentState.CurrentTrack}" TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="22"
+                                Background="{Binding CardBrush}"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Tools &amp; Settings" />
+
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Foreground="White" Text="Launch at startup" />
+                                        <TextBlock Foreground="#A8FFFFFF" Text="Keep the tracker running from the tray when Windows starts." TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                    <ToggleSwitch x:Name="LaunchAtStartupToggle"
+                                                  Grid.Column="1"
+                                                  IsOn="{Binding CurrentState.LaunchAtStartup}"
+                                                  OffContent="Off"
+                                                  OnContent="On"
+                                                  Toggled="LaunchAtStartupToggle_Toggled" />
+                                </Grid>
+
+                                <Grid ColumnSpacing="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Foreground="White" Text="Metadata enrichment" />
+                                        <TextBlock Foreground="#A8FFFFFF" Text="Uses Apple Music and iTunes metadata to enrich tracks asynchronously." TextWrapping="WrapWholeWords" />
+                                    </StackPanel>
+                                    <Border Grid.Column="1"
+                                            Padding="12,6"
+                                            Background="#14000000"
+                                            CornerRadius="999">
+                                        <TextBlock Foreground="#E8FFFFFF" Text="{Binding MetadataEnrichmentLabel}" />
+                                    </Border>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Command="{Binding OpenDatabaseFolderCommand}" Content="Open Database Folder" />
+                                    <Button Click="ExportSessionsCsvClick" Content="Export Sessions CSV" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

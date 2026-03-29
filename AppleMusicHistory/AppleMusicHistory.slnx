@@ -1,6 +1,11 @@
 <Solution>
   <Project Path="AppleMusicHistory.Core/AppleMusicHistory.Core.csproj" />
   <Project Path="AppleMusicHistory.Tests/AppleMusicHistory.Tests.csproj" />
+  <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory.Host/AppleMusicHistory.Host.csproj" />
+  <Project Path="AppleMusicHistory.WinUI/AppleMusicHistory.WinUI.csproj" Id="2f3cf982-6c3b-4b12-9598-06274ff9fecb">
+    <Platform Project="x64" />
+    <Deploy />
+  </Project>
   <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory.App/AppleMusicHistory.App.csproj" />
   <Project Path="S:/Dev/AppleMusicTracker/AppleMusicHistory/AppleMusicHistory.Infrastructure/AppleMusicHistory.Infrastructure.csproj" />
 </Solution>

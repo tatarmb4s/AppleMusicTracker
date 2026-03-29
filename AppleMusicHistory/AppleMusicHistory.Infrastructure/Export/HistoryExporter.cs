@@ -4,7 +4,7 @@ using AppleMusicHistory.Core.Abstractions;
 
 namespace AppleMusicHistory.Infrastructure.Export;
 
-public sealed class HistoryExporter
+public sealed class HistoryExporter : IHistoryExporter
 {
     private readonly IHistoryRepository _repository;
 

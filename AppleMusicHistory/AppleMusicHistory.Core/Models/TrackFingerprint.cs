@@ -15,7 +15,7 @@ public sealed record TrackFingerprint(string NormalizedTitle, string NormalizedA
         var normalizedArtist = Normalize(artist);
         var normalizedAlbum = Normalize(album);
         var composite = $"{normalizedTitle}\n{normalizedArtist}\n{normalizedAlbum}";
-        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(composite)));
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(composite))).ToLowerInvariant();
         return new TrackFingerprint(normalizedTitle, normalizedArtist, normalizedAlbum, hash);
     }
 

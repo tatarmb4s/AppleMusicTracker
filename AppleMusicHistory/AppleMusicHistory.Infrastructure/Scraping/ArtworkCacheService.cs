@@ -18,7 +18,7 @@ public sealed class ArtworkCacheService : IArtworkCache
 
         Directory.CreateDirectory(AppPaths.ArtworkDirectory);
         var extension = InferExtension(artworkUrl);
-        var fileName = $"{Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(artworkUrl)))}{extension}";
+        var fileName = $"{Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(artworkUrl))).ToLowerInvariant()}{extension}";
         var fullPath = Path.Combine(AppPaths.ArtworkDirectory, fileName);
 
         if (!File.Exists(fullPath))

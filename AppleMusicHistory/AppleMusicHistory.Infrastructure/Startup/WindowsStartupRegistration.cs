@@ -4,7 +4,7 @@ using System.Runtime.Versioning;
 namespace AppleMusicHistory.Infrastructure.Startup;
 
 [SupportedOSPlatform("windows")]
-public sealed class WindowsStartupRegistration
+public sealed class WindowsStartupRegistration : IStartupRegistration
 {
     private readonly string _shortcutPath;
 

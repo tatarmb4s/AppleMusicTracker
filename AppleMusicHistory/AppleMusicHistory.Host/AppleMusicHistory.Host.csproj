@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppleMusicHistory.Core\AppleMusicHistory.Core.csproj" />
+    <ProjectReference Include="..\AppleMusicHistory.Infrastructure\AppleMusicHistory.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AppleMusicHistory.Host</RootNamespace>
+    <AssemblyName>AppleMusicHistory.Host</AssemblyName>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+</Project>

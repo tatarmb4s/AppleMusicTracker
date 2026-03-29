@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using AppleMusicHistory.Host;
 
 namespace AppleMusicHistory.App.ViewModels;
 
@@ -160,6 +161,32 @@ public sealed class StatusViewModel : INotifyPropertyChanged
     {
         get => _metadataEnrichmentEnabled;
         set => SetField(ref _metadataEnrichmentEnabled, value);
+    }
+
+    public void Apply(DashboardState state)
+    {
+        IsTrackingPaused = state.IsTrackingPaused;
+        LaunchAtStartup = state.LaunchAtStartup;
+        MetadataEnrichmentEnabled = state.MetadataEnrichmentEnabled;
+        AppleMusicState = state.AppleMusicState;
+        CurrentTrack = state.CurrentTrack;
+        CurrentTitle = state.CurrentTitle;
+        CurrentArtist = state.CurrentArtist;
+        CurrentAlbum = state.CurrentAlbum;
+        CurrentComposer = state.CurrentComposer;
+        CurrentReleaseDate = state.CurrentReleaseDate;
+        CurrentGenres = state.CurrentGenres;
+        CurrentTrackNumbers = state.CurrentTrackNumbers;
+        CurrentIsrc = state.CurrentIsrc;
+        CurrentSongUrl = state.CurrentSongUrl;
+        CurrentAlbumUrl = state.CurrentAlbumUrl;
+        CurrentArtistUrl = state.CurrentArtistUrl;
+        CurrentArtworkPathOrUrl = state.CurrentArtworkPathOrUrl;
+        ActiveSession = state.ActiveSession;
+        Statistics = state.Statistics;
+        LastObserved = state.LastObserved;
+        DatabasePath = state.DatabasePath;
+        CurrentAudioFormat = state.CurrentAudioFormat;
     }
 
     private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)

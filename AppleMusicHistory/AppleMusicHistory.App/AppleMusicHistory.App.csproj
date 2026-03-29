@@ -1,13 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\AppleMusicHistory.Core\AppleMusicHistory.Core.csproj" />
-    <ProjectReference Include="..\AppleMusicHistory.Infrastructure\AppleMusicHistory.Infrastructure.csproj" />
+    <ProjectReference Include="..\AppleMusicHistory.Host\AppleMusicHistory.Host.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -16,7 +15,7 @@
     <AssemblyName>AppleMusicHistory.App</AssemblyName>
     <LangVersion>preview</LangVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <SupportedOSPlatformVersion>10.0.26100.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
 </Project>

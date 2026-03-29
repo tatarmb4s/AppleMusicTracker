@@ -1,6 +1,6 @@
 using AppleMusicHistory.Core.Models;
 
-namespace AppleMusicHistory.App;
+namespace AppleMusicHistory.Host;
 
 public sealed record RuntimeStatus(
     bool IsTrackingPaused,

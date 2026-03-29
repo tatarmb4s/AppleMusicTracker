@@ -4,9 +4,9 @@ using AppleMusicHistory.Core.Services;
 using AppleMusicHistory.Infrastructure.Data;
 using AppleMusicHistory.Infrastructure.Settings;
 
-namespace AppleMusicHistory.App;
+namespace AppleMusicHistory.Host;
 
-public sealed class TrackerRuntime : IAsyncDisposable
+public sealed class TrackerRuntime : ITrackerRuntime
 {
     private readonly IAppleMusicSnapshotSource _snapshotSource;
     private readonly IHistoryRepository _repository;
