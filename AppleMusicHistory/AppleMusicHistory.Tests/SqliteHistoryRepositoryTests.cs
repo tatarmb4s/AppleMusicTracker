@@ -179,6 +179,132 @@ public sealed class SqliteHistoryRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTrackHistoryAsync_ReturnsRawFields_WithMetadataUrls_OrderedByLastSeen()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        var firstObservedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        var secondObservedAt = DateTimeOffset.Parse("2026-03-09T12:05:00Z");
+
+        var firstTrack = await repository.UpsertTrackAsync(
+            new TrackUpsert(
+                TrackFingerprint.From("First Song", "First Artist", "First Album"),
+                "First Song",
+                "First Artist",
+                "First Album",
+                "First Subtitle",
+                firstObservedAt,
+                180,
+                SongUrl: "https://track/song",
+                ArtistUrl: "https://track/artist",
+                ArtworkUrl: "https://track/artwork.jpg",
+                CatalogAudioVariantsJson: "[\"Lossless\"]",
+                LastObservedAudioBadgeRaw: "Lossless",
+                LastObservedAudioVariant: PlaybackAudioVariant.Lossless),
+            CancellationToken.None);
+
+        await repository.UpsertTrackMetadataAsync(
+            firstTrack.TrackId,
+            new TrackMetadataUpsert(
+                "https://metadata/song",
+                "https://metadata/album",
+                "https://metadata/artist",
+                "catalog-song",
+                "catalog-album",
+                "catalog-artist",
+                null,
+                null,
+                null,
+                180,
+                firstObservedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "[\"Lossless\"]",
+                "https://metadata/artwork.jpg",
+                1000,
+                1000,
+                Path.Combine("artwork", "cover.jpg"),
+                "us",
+                "[\"catalog\"]",
+                null,
+                null,
+                null,
+                firstObservedAt.AddMinutes(1),
+                firstObservedAt.AddMinutes(1)),
+            CancellationToken.None);
+
+        await repository.UpsertTrackAsync(
+            new TrackUpsert(
+                TrackFingerprint.From("Second Song", "Second Artist", "Second Album"),
+                "Second Song",
+                "Second Artist",
+                "Second Album",
+                "Second Subtitle",
+                secondObservedAt,
+                200,
+                CatalogAudioVariantsJson: "[\"Dolby Atmos\"]",
+                LastObservedAudioBadgeRaw: "Dolby Atmos",
+                LastObservedAudioVariant: PlaybackAudioVariant.DolbyAtmos),
+            CancellationToken.None);
+
+        var rows = await repository.GetTrackHistoryAsync(CancellationToken.None);
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("Second Song", rows[0].Title);
+        Assert.Equal("First Song", rows[1].Title);
+        Assert.Equal("[\"Lossless\"]", rows[1].CatalogAudioVariantsJson);
+        Assert.Equal("Lossless", rows[1].LastObservedAudioBadgeRaw);
+        Assert.Equal(PlaybackAudioVariant.Lossless, rows[1].LastObservedAudioVariant);
+        Assert.Equal("https://metadata/song", rows[1].SongUrl);
+        Assert.Equal("https://metadata/album", rows[1].AlbumUrl);
+        Assert.Equal("https://metadata/artist", rows[1].ArtistUrl);
+        Assert.Equal("https://metadata/artwork.jpg", rows[1].ArtworkUrl);
+        Assert.Equal(Path.Combine("artwork", "cover.jpg"), rows[1].ArtworkCacheRelativePath);
+    }
+
+    [Fact]
+    public async Task GetTrackHistoryAsync_ReturnsTrackUrls_WhenMetadataIsMissing()
+    {
+        var repository = new SqliteHistoryRepository(_databasePath);
+        await repository.InitializeAsync(CancellationToken.None);
+
+        var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        await repository.UpsertTrackAsync(
+            new TrackUpsert(
+                TrackFingerprint.From("Song", "Artist", "Album"),
+                "Song",
+                "Artist",
+                "Album",
+                "Subtitle",
+                observedAt,
+                180,
+                SongUrl: "https://track/song",
+                ArtistUrl: "https://track/artist",
+                ArtworkUrl: "https://track/art.jpg",
+                CatalogAudioVariantsJson: "[\"Lossless\"]",
+                LastObservedAudioBadgeRaw: "Lossless",
+                LastObservedAudioVariant: PlaybackAudioVariant.Lossless),
+            CancellationToken.None);
+
+        var rows = await repository.GetTrackHistoryAsync(CancellationToken.None);
+
+        var row = Assert.Single(rows);
+        Assert.Equal("https://track/song", row.SongUrl);
+        Assert.Null(row.AlbumUrl);
+        Assert.Equal("https://track/artist", row.ArtistUrl);
+        Assert.Equal("https://track/art.jpg", row.ArtworkUrl);
+        Assert.Null(row.ArtworkCacheRelativePath);
+    }
+
+    [Fact]
     public async Task InitializeAsync_UpgradesSchemaToVersion4()
     {
         var repository = new SqliteHistoryRepository(_databasePath);

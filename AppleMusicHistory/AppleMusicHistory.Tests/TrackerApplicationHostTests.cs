@@ -125,11 +125,44 @@ public sealed class TrackerApplicationHostTests
         Assert.False(host.CurrentState.LaunchAtStartup);
     }
 
+    [Fact]
+    public async Task GetTrackHistoryAsync_DelegatesToRepository()
+    {
+        var exportPicker = new StubExportFilePicker();
+        var exporter = new StubHistoryExporter();
+        var fakeRuntime = new StubTrackerRuntime();
+
+        var repository = new TestHistoryRepository();
+        var observedAt = DateTimeOffset.Parse("2026-03-09T12:00:00Z");
+        await repository.UpsertTrackAsync(
+            new TrackUpsert(
+                TrackFingerprint.From("Song", "Artist", "Album"),
+                "Song",
+                "Artist",
+                "Album",
+                "Subtitle",
+                observedAt,
+                180,
+                CatalogAudioVariantsJson: "[\"Lossless\"]",
+                LastObservedAudioBadgeRaw: "Lossless",
+                LastObservedAudioVariant: PlaybackAudioVariant.Lossless),
+            CancellationToken.None);
+
+        await using var repositoryHost = await CreateHostAsync(exportPicker, exporter, fakeRuntime, repository: repository);
+
+        var rows = await repositoryHost.GetTrackHistoryAsync(CancellationToken.None);
+
+        var row = Assert.Single(rows);
+        Assert.Equal("Song", row.Title);
+        Assert.Equal("Lossless", row.LastObservedAudioBadgeRaw);
+    }
+
     private static async Task<TrackerApplicationHost> CreateHostAsync(
         StubExportFilePicker exportPicker,
         StubHistoryExporter exporter,
         StubTrackerRuntime fakeRuntime,
-        StubStartupRegistration? startupRegistration = null)
+        StubStartupRegistration? startupRegistration = null,
+        TestHistoryRepository? repository = null)
     {
         var settingsPath = CreateTempPath("settings.json");
         var settingsStore = new JsonTrackerSettingsStore(settingsPath);
@@ -149,7 +182,7 @@ public sealed class TrackerApplicationHostTests
             logger: new FileLogger(),
             settingsStore: settingsStore,
             startupRegistration: startupRegistration ?? new StubStartupRegistration(),
-            repository: new TestHistoryRepository(),
+            repository: repository ?? new TestHistoryRepository(),
             exporterFactory: _ => exporter,
             snapshotSourceFactory: _ => new StubSnapshotSource(),
             metadataEnricherFactory: _ => new NoOpMetadataEnricher(),

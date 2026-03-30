@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="AppleMusicHistory.WinUI.Views.TrackHistoryView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="TrackHistoryFilterTextBoxStyle" TargetType="TextBox">
+            <Setter Property="MinHeight" Value="40" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="Background" Value="#16000000" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style x:Key="TrackHistoryActionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#D9121820" />
+            <Setter Property="BorderBrush" Value="#40FFFFFF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="17" />
+        </Style>
+    </UserControl.Resources>
+
+    <Border Padding="20"
+            Background="#26FFFFFF"
+            BorderBrush="{Binding CardBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="18">
+        <Grid RowSpacing="16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="30"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               Text="Track History" />
+                    <TextBlock Foreground="#C8FFFFFF"
+                               Text="Raw track rows from the local tracker database with per-column filtering."
+                               TextWrapping="WrapWholeWords" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Padding="16,10"
+                        Background="#1A000000"
+                        BorderBrush="{Binding CardBorderBrush}"
+                        BorderThickness="1"
+                        Command="{Binding TrackHistory.ClearFiltersCommand}"
+                        CornerRadius="14"
+                        Content="Clear Filters" />
+
+                <Button Grid.Column="2"
+                        Padding="16,10"
+                        Background="#F5FFFFFF"
+                        BorderThickness="0"
+                        Command="{Binding TrackHistory.RefreshCommand}"
+                        CornerRadius="14">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Foreground="#111111" Glyph="&#xE72C;" />
+                        <TextBlock FontWeight="SemiBold" Foreground="#111111" Text="Refresh" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <Grid Grid.Row="1"
+                  Width="1920"
+                  ColumnSpacing="14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="100" />
+                    <ColumnDefinition Width="360" />
+                    <ColumnDefinition Width="240" />
+                    <ColumnDefinition Width="260" />
+                    <ColumnDefinition Width="260" />
+                    <ColumnDefinition Width="260" />
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="220" />
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="track_id"
+                         Text="{Binding TrackHistory.TrackIdFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="1"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="title"
+                         Text="{Binding TrackHistory.TitleFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="2"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="artist"
+                         Text="{Binding TrackHistory.ArtistFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="3"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="album"
+                         Text="{Binding TrackHistory.AlbumFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="4"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="subtitle"
+                         Text="{Binding TrackHistory.SubtitleFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="5"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="catalog_audio_variants_json"
+                         Text="{Binding TrackHistory.CatalogAudioVariantsJsonFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="6"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="last_observed_audio_badge_raw"
+                         Text="{Binding TrackHistory.LastObservedAudioBadgeRawFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBox Grid.Column="7"
+                         Style="{StaticResource TrackHistoryFilterTextBoxStyle}"
+                         BorderBrush="{Binding CardBorderBrush}"
+                         PlaceholderText="last_observed_audio_variant"
+                         Text="{Binding TrackHistory.LastObservedAudioVariantFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Grid.Row="2">
+                <Grid Visibility="{Binding TrackHistory.IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ProgressRing Width="72"
+                                  Height="72"
+                                  IsActive="True"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid Visibility="{Binding TrackHistory.HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Border Padding="18"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="#33000000"
+                            BorderBrush="{Binding CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="14">
+                        <TextBlock Foreground="#FFF2B9B9"
+                                   Text="{Binding TrackHistory.ErrorMessage}"
+                                   TextWrapping="WrapWholeWords" />
+                    </Border>
+                </Grid>
+
+                <Grid Visibility="{Binding TrackHistory.HasNoRows, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Border Padding="18"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="#22000000"
+                            BorderBrush="{Binding CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="14">
+                        <TextBlock Foreground="#E8FFFFFF"
+                                   Text="No tracks match the current filters."
+                                   TextWrapping="WrapWholeWords" />
+                    </Border>
+                </Grid>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                              HorizontalScrollMode="Enabled"
+                              VerticalScrollBarVisibility="Disabled"
+                              VerticalScrollMode="Disabled">
+                    <Grid Width="1920"
+                          Visibility="{Binding TrackHistory.HasRows, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Padding="16,14"
+                                Background="#14000000"
+                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                            <Grid ColumnSpacing="14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100" />
+                                    <ColumnDefinition Width="360" />
+                                    <ColumnDefinition Width="240" />
+                                    <ColumnDefinition Width="260" />
+                                    <ColumnDefinition Width="260" />
+                                    <ColumnDefinition Width="260" />
+                                    <ColumnDefinition Width="220" />
+                                    <ColumnDefinition Width="220" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="track_id" />
+                                <TextBlock Grid.Column="1" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="title" />
+                                <TextBlock Grid.Column="2" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="artist" />
+                                <TextBlock Grid.Column="3" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="album" />
+                                <TextBlock Grid.Column="4" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="subtitle" />
+                                <TextBlock Grid.Column="5" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="catalog_audio_variants_json" />
+                                <TextBlock Grid.Column="6" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="last_observed_audio_badge_raw" />
+                                <TextBlock Grid.Column="7" Foreground="#E8FFFFFF" FontWeight="SemiBold" Text="last_observed_audio_variant" />
+                            </Grid>
+                        </Border>
+
+                        <ListView Grid.Row="1"
+                                  Margin="0,10,0,0"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  IsItemClickEnabled="False"
+                                  ItemsSource="{Binding TrackHistory.FilteredRows}"
+                                  SelectionMode="None"
+                                  ScrollViewer.HorizontalScrollMode="Disabled"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0,0,0,10" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="16,14"
+                                            Background="#14FFFFFF"
+                                            BorderBrush="#24FFFFFF"
+                                            BorderThickness="1"
+                                            CornerRadius="16"
+                                            PointerEntered="TrackHistoryRow_PointerEntered"
+                                            PointerExited="TrackHistoryRow_PointerExited">
+                                        <Grid>
+                                            <Grid ColumnSpacing="14">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="360" />
+                                                    <ColumnDefinition Width="240" />
+                                                    <ColumnDefinition Width="260" />
+                                                    <ColumnDefinition Width="260" />
+                                                    <ColumnDefinition Width="260" />
+                                                    <ColumnDefinition Width="220" />
+                                                    <ColumnDefinition Width="220" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#E8FFFFFF"
+                                                           Text="{Binding TrackId}" />
+
+                                                <Grid Grid.Column="1" ColumnSpacing="14">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="56" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <Border Width="56"
+                                                            Height="56"
+                                                            Background="#22000000"
+                                                            BorderBrush="#26FFFFFF"
+                                                            BorderThickness="1"
+                                                            CornerRadius="12">
+                                                        <Image Source="{Binding ArtworkPathOrUrl, Converter={StaticResource StringToImageSourceConverter}}"
+                                                               Stretch="UniformToFill" />
+                                                    </Border>
+
+                                                    <StackPanel Grid.Column="1"
+                                                                VerticalAlignment="Center"
+                                                                Spacing="6">
+                                                        <TextBlock Foreground="White"
+                                                                   FontWeight="SemiBold"
+                                                                   Text="{Binding Title}"
+                                                                   TextWrapping="WrapWholeWords" />
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    Spacing="8"
+                                                                    Visibility="{Binding HasAudioBadgeLabel, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                            <Image Width="18"
+                                                                   Height="18"
+                                                                   Source="{Binding AudioBadgeAssetUri}"
+                                                                   Stretch="Uniform"
+                                                                   Visibility="{Binding HasAudioBadge, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <TextBlock Foreground="#C8FFFFFF"
+                                                                       FontSize="12"
+                                                                       Text="{Binding AudioBadgeLabel}"
+                                                                       TextWrapping="WrapWholeWords" />
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <TextBlock Grid.Column="2"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#D8FFFFFF"
+                                                           Text="{Binding Artist}"
+                                                           TextWrapping="WrapWholeWords" />
+                                                <TextBlock Grid.Column="3"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#D8FFFFFF"
+                                                           Text="{Binding Album}"
+                                                           TextWrapping="WrapWholeWords" />
+                                                <TextBlock Grid.Column="4"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#D8FFFFFF"
+                                                           Text="{Binding Subtitle}"
+                                                           TextWrapping="WrapWholeWords" />
+                                                <TextBlock Grid.Column="5"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#D8FFFFFF"
+                                                           Text="{Binding CatalogAudioVariantsJson}"
+                                                           TextWrapping="WrapWholeWords" />
+                                                <TextBlock Grid.Column="6"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="#D8FFFFFF"
+                                                           Text="{Binding LastObservedAudioBadgeRaw}"
+                                                           TextWrapping="WrapWholeWords" />
+
+                                                <StackPanel Grid.Column="7"
+                                                            Orientation="Horizontal"
+                                                            Spacing="8"
+                                                            VerticalAlignment="Center">
+                                                    <Image Width="20"
+                                                           Height="20"
+                                                           Source="{Binding AudioBadgeAssetUri}"
+                                                           Stretch="Uniform"
+                                                           Visibility="{Binding HasAudioBadge, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                    <TextBlock Foreground="#D8FFFFFF"
+                                                               Text="{Binding LastObservedAudioVariantText}"
+                                                               TextWrapping="WrapWholeWords"
+                                                               VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Border Margin="12,2,0,0"
+                                                    Padding="8,6"
+                                                    HorizontalAlignment="Left"
+                                                    VerticalAlignment="Top"
+                                                    Background="#D9121820"
+                                                    BorderBrush="#40FFFFFF"
+                                                    BorderThickness="1"
+                                                    CornerRadius="14"
+                                                    Visibility="{Binding IsHovered, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <Button Style="{StaticResource TrackHistoryActionButtonStyle}"
+                                                            Command="{Binding OpenAlbumCommand}"
+                                                            IsEnabled="{Binding CanOpenAlbum}"
+                                                            ToolTipService.ToolTip="Show album">
+                                                        <FontIcon FontSize="14" Glyph="&#xE8A5;" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource TrackHistoryActionButtonStyle}"
+                                                            IsEnabled="False"
+                                                            Opacity="0.55"
+                                                            ToolTipService.ToolTip="Planned">
+                                                        <FontIcon FontSize="14" Glyph="&#xE8FB;" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource TrackHistoryActionButtonStyle}"
+                                                            IsEnabled="False"
+                                                            Opacity="0.55"
+                                                            ToolTipService.ToolTip="Planned">
+                                                        <FontIcon FontSize="14" Glyph="&#xE768;" />
+                                                    </Button>
+                                                    <Button Style="{StaticResource TrackHistoryActionButtonStyle}"
+                                                            Command="{Binding OpenArtistCommand}"
+                                                            IsEnabled="{Binding CanOpenArtist}"
+                                                            ToolTipService.ToolTip="Show artist">
+                                                        <FontIcon FontSize="14" Glyph="&#xE77B;" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

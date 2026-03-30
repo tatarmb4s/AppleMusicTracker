@@ -448,6 +448,59 @@ public sealed class SqliteHistoryRepository : IHistoryRepository
             cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TrackHistoryRow>> GetTrackHistoryAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT
+                t.track_id,
+                t.title,
+                t.artist,
+                t.album,
+                t.subtitle,
+                t.catalog_audio_variants_json,
+                t.last_observed_audio_badge_raw,
+                t.last_observed_audio_variant,
+                COALESCE(tm.apple_music_song_url, t.song_url),
+                tm.apple_music_album_url,
+                COALESCE(tm.apple_music_artist_url, t.artist_url),
+                COALESCE(tm.artwork_url, t.artwork_url),
+                tm.artwork_cache_relative_path,
+                t.last_seen_utc
+            FROM tracks t
+            LEFT JOIN track_metadata tm ON tm.track_id = t.track_id
+            ORDER BY t.last_seen_utc DESC, t.track_id DESC;
+            """;
+
+        return await ExecuteReaderAsync(
+            sql,
+            [],
+            async reader =>
+            {
+                var rows = new List<TrackHistoryRow>();
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    rows.Add(new TrackHistoryRow(
+                        reader.GetInt64(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetString(3),
+                        reader.GetString(4),
+                        reader.IsDBNull(5) ? null : reader.GetString(5),
+                        reader.IsDBNull(6) ? null : reader.GetString(6),
+                        reader.IsDBNull(7) ? null : (PlaybackAudioVariant)reader.GetInt32(7),
+                        reader.IsDBNull(8) ? null : reader.GetString(8),
+                        reader.IsDBNull(9) ? null : reader.GetString(9),
+                        reader.IsDBNull(10) ? null : reader.GetString(10),
+                        reader.IsDBNull(11) ? null : reader.GetString(11),
+                        reader.IsDBNull(12) ? null : reader.GetString(12),
+                        ParseDate(reader, 13)!.Value));
+                }
+
+                return (IReadOnlyList<TrackHistoryRow>)rows;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task<IReadOnlyList<ExportSessionRow>> ExportSessionsAsync(DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken cancellationToken)
     {
         const string sql = """

@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:views="using:AppleMusicHistory.WinUI.Views"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="AppleMusicTracker">
@@ -67,6 +68,7 @@
             <Grid x:Name="ResponsiveRoot" Margin="20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
@@ -88,7 +90,7 @@
                                        Text="Apple Music Tracker" />
                             <TextBlock FontSize="11"
                                        Foreground="#C8FFFFFF"
-                                       Text="{Binding CurrentState.TrackerStatus}" />
+                                       Text="{Binding NowPlaying.CurrentState.TrackerStatus}" />
                         </StackPanel>
                     </StackPanel>
 
@@ -101,12 +103,65 @@
                             VerticalAlignment="Center">
                         <TextBlock FontSize="12"
                                    Foreground="White"
-                                   Text="{Binding CurrentState.AppleMusicState}" />
+                                   Text="{Binding NowPlaying.CurrentState.AppleMusicState}" />
                     </Border>
                 </Grid>
 
-                <ScrollViewer Grid.Row="1"
+                <Border Grid.Row="1"
+                        Margin="0,14,0,0"
+                        Padding="6"
+                        HorizontalAlignment="Left"
+                        Background="#24FFFFFF"
+                        BorderBrush="{Binding CardBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="20">
+                    <Grid MinWidth="320">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0"
+                                Background="#30FFFFFF"
+                                CornerRadius="14"
+                                Visibility="{Binding IsNowPlayingTabSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <Border Grid.Column="1"
+                                Background="#30FFFFFF"
+                                CornerRadius="14"
+                                Visibility="{Binding IsTrackHistoryTabSelected, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                        <Button Grid.Column="0"
+                                MinWidth="150"
+                                Padding="18,10"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{Binding Tabs.SelectNowPlayingCommand}">
+                            <TextBlock FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="Now Playing" />
+                        </Button>
+
+                        <Button Grid.Column="1"
+                                MinWidth="150"
+                                Padding="18,10"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Command="{Binding Tabs.SelectTrackHistoryCommand}">
+                            <TextBlock FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="Track History" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <Grid x:Name="NowPlayingTabContent"
+                      Grid.Row="2"
+                      Visibility="{Binding IsNowPlayingTabSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ScrollViewer
                               Margin="0,10,0,0"
+                              DataContext="{Binding NowPlaying}"
                               HorizontalScrollBarVisibility="Disabled"
                               VerticalScrollBarVisibility="Auto">
                         <Grid x:Name="ShellLayoutGrid"
@@ -126,7 +181,7 @@
                                 Grid.Column="0"
                                 Padding="24"
                                 Background="#2AFFF8F1"
-                                BorderBrush="{Binding CardBorderBrush}"
+                                BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                 BorderThickness="1"
                                 CornerRadius="5">
                             <Grid x:Name="HeroContentGrid" RowSpacing="14">
@@ -143,15 +198,15 @@
                                         MinHeight="220"
                                         HorizontalAlignment="Stretch"
                                         Background="#16000000"
-                                        BorderBrush="{Binding CardBorderBrush}"
+                                        BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                         BorderThickness="1"
                                         CornerRadius="10">
                                     <Grid>
-                                        <Image Source="{Binding ArtworkImage}"
+                                        <Image Source="{Binding DataContext.ArtworkImage, ElementName=RootGrid}"
                                                Stretch="UniformToFill"
-                                               Visibility="{Binding HasArtwork, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                               Visibility="{Binding DataContext.HasArtwork, ElementName=RootGrid, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                         <Border Background="#22000000"
-                                                Visibility="{Binding HasArtwork, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                                Visibility="{Binding DataContext.HasArtwork, ElementName=RootGrid, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                             <StackPanel HorizontalAlignment="Center"
                                                         VerticalAlignment="Center"
                                                         Spacing="12">
@@ -181,7 +236,7 @@
                                                TextAlignment="Center"
                                                TextWrapping="WrapWholeWords">
                                         <Run Text="{Binding CurrentState.CurrentArtist}" />
-                                        <Run Text=" — " />
+                                        <Run Text=" - " />
                                         <Run Text="{Binding CurrentState.CurrentAlbum}" />
                                     </TextBlock>
 
@@ -189,7 +244,7 @@
                                             Padding="12,7"
                                             HorizontalAlignment="Center"
                                             Background="#22000000"
-                                            BorderBrush="{Binding CardBorderBrush}"
+                                            BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                             BorderThickness="1"
                                             CornerRadius="15">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
@@ -222,7 +277,7 @@
                                                  Height="6"
                                                  Margin="0,2"
                                                  Background="#26FFFFFF"
-                                                 Foreground="{Binding AccentBrush}"
+                                                 Foreground="{Binding DataContext.AccentBrush, ElementName=RootGrid}"
                                                  Maximum="1"
                                                  Value="{Binding CurrentState.PlaybackProgress}" />
                                     <TextBlock Grid.Column="2"
@@ -253,7 +308,7 @@
                                             Grid.Row="0"
                                             Grid.Column="0"
                                             Style="{StaticResource UtilityButtonStyle}"
-                                            BorderBrush="{Binding CardBorderBrush}"
+                                            BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                             Command="{Binding OpenDatabaseFolderCommand}"
                                             ToolTipService.ToolTip="Open database folder">
                                         <FontIcon FontSize="14" Glyph="&#xE838;" />
@@ -263,7 +318,7 @@
                                             Grid.Row="0"
                                             Grid.Column="1"
                                             Style="{StaticResource UtilityButtonStyle}"
-                                            BorderBrush="{Binding CardBorderBrush}"
+                                            BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                             Click="OpenSongClick"
                                             IsEnabled="{Binding HasSongUrl}"
                                             ToolTipService.ToolTip="Open song page">
@@ -298,7 +353,7 @@
                                             Grid.Row="0"
                                             Grid.Column="3"
                                             Style="{StaticResource UtilityButtonStyle}"
-                                            BorderBrush="{Binding CardBorderBrush}"
+                                            BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                             Click="OpenAlbumClick"
                                             IsEnabled="{Binding HasAlbumUrl}"
                                             ToolTipService.ToolTip="Open album page">
@@ -311,7 +366,7 @@
                                                  Width="74"
                                                  Height="44"
                                                  Background="#22FFFFFF"
-                                                 BorderBrush="{Binding CardBorderBrush}"
+                                                 BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                                  BorderThickness="1"
                                                  Click="ExportSplitButtonClick"
                                                  CornerRadius="22"
@@ -339,7 +394,7 @@
                             <Border x:Name="StatusCard"
                                     Padding="18"
                                     Background="#26FFFFFF"
-                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                     BorderThickness="1"
                                     CornerRadius="5">
                                 <StackPanel Spacing="10">
@@ -361,7 +416,7 @@
                             <Border x:Name="MetadataCard"
                                     Padding="18"
                                     Background="#26FFFFFF"
-                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                     BorderThickness="1"
                                     CornerRadius="5">
                                 <StackPanel Spacing="10">
@@ -397,7 +452,7 @@
                             <Border x:Name="StatisticsCard"
                                     Padding="18"
                                     Background="#26FFFFFF"
-                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                     BorderThickness="1"
                                     CornerRadius="5">
                                 <StackPanel Spacing="10">
@@ -413,7 +468,7 @@
                             <Border x:Name="ToolsCard"
                                     Padding="18"
                                     Background="#26FFFFFF"
-                                    BorderBrush="{Binding CardBorderBrush}"
+                                    BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                     BorderThickness="1"
                                     CornerRadius="5">
                                 <StackPanel Spacing="14">
@@ -448,7 +503,7 @@
                                         <Border Grid.Column="1"
                                                 Padding="12,6"
                                                 Background="#22000000"
-                                                BorderBrush="{Binding CardBorderBrush}"
+                                                BorderBrush="{Binding DataContext.CardBorderBrush, ElementName=RootGrid}"
                                                 BorderThickness="1"
                                                 CornerRadius="12">
                                             <TextBlock Foreground="#E8FFFFFF" Text="{Binding MetadataEnrichmentLabel}" />
@@ -464,6 +519,12 @@
                         </StackPanel>
                     </Grid>
                 </ScrollViewer>
+                </Grid>
+
+                <Grid Grid.Row="2"
+                      Visibility="{Binding IsTrackHistoryTabSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <views:TrackHistoryView />
+                </Grid>
             </Grid>
         </Grid>
     </Grid>

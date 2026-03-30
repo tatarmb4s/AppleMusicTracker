@@ -16,6 +16,7 @@ public interface IHistoryRepository
     Task CloseSessionAsync(SessionClosure closure, CancellationToken cancellationToken);
     Task<TrackerStatistics> GetStatisticsAsync(CancellationToken cancellationToken);
     Task<TrackDetailsRecord?> GetTrackDetailsAsync(long trackId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TrackHistoryRow>> GetTrackHistoryAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<ExportSessionRow>> ExportSessionsAsync(DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken cancellationToken);
     Task<IReadOnlyList<ExportTrackRow>> ExportTracksAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<SessionEventRecord>> GetSessionEventsAsync(long sessionId, CancellationToken cancellationToken);

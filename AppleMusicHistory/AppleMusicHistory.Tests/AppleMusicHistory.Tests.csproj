@@ -23,6 +23,7 @@
     <ProjectReference Include="..\AppleMusicHistory.Core\AppleMusicHistory.Core.csproj" />
     <ProjectReference Include="..\AppleMusicHistory.Host\AppleMusicHistory.Host.csproj" />
     <ProjectReference Include="..\AppleMusicHistory.Infrastructure\AppleMusicHistory.Infrastructure.csproj" />
+    <ProjectReference Include="..\AppleMusicHistory.WinUI\AppleMusicHistory.WinUI.csproj" />
   </ItemGroup>
 
 </Project>

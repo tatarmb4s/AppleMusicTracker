@@ -277,6 +277,9 @@ public sealed class PlaybackSessionCoordinatorTests
             return Task.FromResult<TrackDetailsRecord?>(new TrackDetailsRecord(track, metadata));
         }
 
+        public Task<IReadOnlyList<TrackHistoryRow>> GetTrackHistoryAsync(CancellationToken cancellationToken)
+            => Task.FromResult((IReadOnlyList<TrackHistoryRow>)Array.Empty<TrackHistoryRow>());
+
         public Task<IReadOnlyList<ExportSessionRow>> ExportSessionsAsync(DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken cancellationToken)
             => Task.FromResult((IReadOnlyList<ExportSessionRow>)Array.Empty<ExportSessionRow>());
 

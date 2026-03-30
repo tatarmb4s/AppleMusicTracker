@@ -171,6 +171,16 @@ public sealed class TrackerApplicationHost : IAsyncDisposable
         }
     }
 
+    public async Task<IReadOnlyList<TrackHistoryRow>> GetTrackHistoryAsync(CancellationToken cancellationToken)
+    {
+        if (_repository is null)
+        {
+            return Array.Empty<TrackHistoryRow>();
+        }
+
+        return await _repository.GetTrackHistoryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public void OpenDatabaseFolder()
     {
         var directory = Path.GetDirectoryName(_settings?.Options.DatabasePath ?? AppPaths.DatabasePath) ?? AppPaths.AppDataDirectory;

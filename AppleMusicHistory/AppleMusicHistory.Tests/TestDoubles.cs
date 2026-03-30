@@ -190,6 +190,35 @@ internal sealed class TestHistoryRepository : IHistoryRepository
         return Task.FromResult<TrackDetailsRecord?>(new TrackDetailsRecord(track, metadata));
     }
 
+    public Task<IReadOnlyList<TrackHistoryRow>> GetTrackHistoryAsync(CancellationToken cancellationToken)
+    {
+        var rows = _tracks.Values
+            .OrderByDescending(track => track.LastSeenUtc)
+            .ThenByDescending(track => track.TrackId)
+            .Select(track =>
+            {
+                _trackMetadata.TryGetValue(track.TrackId, out var metadata);
+                return new TrackHistoryRow(
+                    track.TrackId,
+                    track.Title,
+                    track.Artist,
+                    track.Album,
+                    track.Subtitle,
+                    track.CatalogAudioVariantsJson ?? metadata?.CatalogAudioVariantsJson,
+                    track.LastObservedAudioBadgeRaw,
+                    track.LastObservedAudioVariant,
+                    metadata?.AppleMusicSongUrl ?? track.SongUrl,
+                    metadata?.AppleMusicAlbumUrl,
+                    metadata?.AppleMusicArtistUrl ?? track.ArtistUrl,
+                    metadata?.ArtworkUrl ?? track.ArtworkUrl,
+                    metadata?.ArtworkCacheRelativePath,
+                    track.LastSeenUtc);
+            })
+            .ToArray();
+
+        return Task.FromResult((IReadOnlyList<TrackHistoryRow>)rows);
+    }
+
     public Task<IReadOnlyList<ExportSessionRow>> ExportSessionsAsync(DateTimeOffset? fromUtc, DateTimeOffset? toUtc, CancellationToken cancellationToken)
         => Task.FromResult((IReadOnlyList<ExportSessionRow>)Array.Empty<ExportSessionRow>());
 
