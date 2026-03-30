@@ -70,12 +70,26 @@ public sealed class TrackerApplicationHostTests
         Assert.Equal("Ed Sheeran", state.CurrentArtist);
         Assert.Equal("Divide", state.CurrentAlbum);
         Assert.Equal("Dolby Audio", state.CurrentAudioFormat);
+        Assert.Equal(PlaybackAudioVariant.DolbyAudio, state.CurrentAudioVariant);
         Assert.Equal("1:05", state.ElapsedText);
         Assert.Equal("-2:55", state.RemainingText);
         Assert.True(state.PlaybackProgress > 0.25 && state.PlaybackProgress < 0.28);
         Assert.Equal("Composer", state.CurrentComposer);
         Assert.Equal("Pop", state.CurrentGenres);
         Assert.True(fakeRuntime.StartCalled);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_DefaultDashboardState_UsesUnknownAudioVariant()
+    {
+        var exportPicker = new StubExportFilePicker();
+        var exporter = new StubHistoryExporter();
+        var fakeRuntime = new StubTrackerRuntime();
+
+        await using var host = await CreateHostAsync(exportPicker, exporter, fakeRuntime);
+
+        Assert.Equal("Standard / unknown", host.CurrentState.CurrentAudioFormat);
+        Assert.Equal(PlaybackAudioVariant.Unknown, host.CurrentState.CurrentAudioVariant);
     }
 
     [Fact]

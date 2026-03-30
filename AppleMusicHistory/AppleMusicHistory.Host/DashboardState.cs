@@ -1,3 +1,5 @@
+using AppleMusicHistory.Core.Models;
+
 namespace AppleMusicHistory.Host;
 
 public sealed record DashboardState(
@@ -24,6 +26,7 @@ public sealed record DashboardState(
     string LastObserved,
     string DatabasePath,
     string CurrentAudioFormat,
+    PlaybackAudioVariant? CurrentAudioVariant,
     string SourceDiagnosticMessage,
     int? CurrentPositionSeconds,
     int? DurationSeconds,
@@ -57,6 +60,7 @@ public sealed record DashboardState(
             "Never",
             databasePath,
             "Standard / unknown",
+            PlaybackAudioVariant.Unknown,
             string.Empty,
             null,
             null,

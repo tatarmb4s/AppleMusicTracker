@@ -59,6 +59,7 @@ internal static class DashboardStateMapper
             status.SourceState == AppleMusicSnapshotReadState.Available && snapshot is not null
                 ? PlaybackAudioVariantParser.ToDisplayName(snapshot.ObservedAudioVariant, snapshot.ObservedAudioBadgeRaw)
                 : "Standard / unknown",
+            status.SourceState == AppleMusicSnapshotReadState.Available ? snapshot?.ObservedAudioVariant ?? PlaybackAudioVariant.Unknown : PlaybackAudioVariant.Unknown,
             status.SourceDiagnosticMessage ?? string.Empty,
             currentPositionSeconds,
             durationSeconds,

@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using AppleMusicHistory.Core.Models;
 using AppleMusicHistory.Host;
 using AppleMusicHistory.WinUI.Commands;
 using Microsoft.UI;
@@ -19,17 +20,20 @@ namespace AppleMusicHistory.WinUI.ViewModels;
 
 public sealed class MainWindowViewModel : INotifyPropertyChanged
 {
+    private const string DefaultPaletteSeed = "apple-music-tracker";
+
     private TrackerApplicationHost? _host;
     private DispatcherQueue? _dispatcherQueue;
     private DashboardState _currentState = DashboardState.CreateDefault(string.Empty, true, true, false);
     private ImageSource? _artworkImage;
-    private Brush _backdropBrush = CreateBackdropBrush("apple-music-tracker");
+    private Brush _backdropBrush = CreateBackdropBrush(DefaultPaletteSeed);
     private Brush _accentGlowBrush = CreateGlowBrush(Colors.CadetBlue, 0.75);
     private Brush _secondaryGlowBrush = CreateGlowBrush(Color.FromArgb(255, 153, 101, 57), 0.55);
-    private SolidColorBrush _cardBrush = new(Color.FromArgb(72, 255, 255, 255));
-    private SolidColorBrush _heroCardBrush = new(Color.FromArgb(78, 255, 255, 255));
     private SolidColorBrush _cardBorderBrush = new(Color.FromArgb(96, 255, 255, 255));
     private SolidColorBrush _accentBrush = new(Color.FromArgb(255, 214, 230, 255));
+    private string _lastArtworkSource = string.Empty;
+    private string _lastPaletteSeed = DefaultPaletteSeed;
+    private string? _currentAudioBadgeAssetUri;
 
     public MainWindowViewModel()
     {
@@ -69,18 +73,6 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         private set => SetField(ref _secondaryGlowBrush, value);
     }
 
-    public SolidColorBrush CardBrush
-    {
-        get => _cardBrush;
-        private set => SetField(ref _cardBrush, value);
-    }
-
-    public SolidColorBrush HeroCardBrush
-    {
-        get => _heroCardBrush;
-        private set => SetField(ref _heroCardBrush, value);
-    }
-
     public SolidColorBrush CardBorderBrush
     {
         get => _cardBorderBrush;
@@ -91,6 +83,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get => _accentBrush;
         private set => SetField(ref _accentBrush, value);
+    }
+
+    public string? CurrentAudioBadgeAssetUri
+    {
+        get => _currentAudioBadgeAssetUri;
+        private set => SetField(ref _currentAudioBadgeAssetUri, value);
     }
 
     public AsyncRelayCommand PauseResumeCommand { get; }
@@ -106,6 +104,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public bool HasArtistUrl => !string.IsNullOrWhiteSpace(CurrentState.CurrentArtistUrl);
 
     public bool HasDiagnosticMessage => !string.IsNullOrWhiteSpace(CurrentState.SourceDiagnosticMessage);
+
+    public bool HasAudioBadge => !string.IsNullOrWhiteSpace(CurrentAudioBadgeAssetUri);
 
     public string PauseResumeLabel => CurrentState.IsTrackingPaused ? "Resume Tracking" : "Pause Tracking";
 
@@ -152,6 +152,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public void OpenArtistUrl() => OpenUrl(CurrentState.CurrentArtistUrl);
 
+    private static string? ResolveAudioBadgeAssetUri(PlaybackAudioVariant? variant)
+    {
+        var fileName = variant switch
+        {
+            PlaybackAudioVariant.DolbyAudio => "dolbyLogo.png",
+            PlaybackAudioVariant.DolbyAtmos => "dolbyLogo.png",
+            PlaybackAudioVariant.Lossless => "losless.png",
+            PlaybackAudioVariant.HiResLossless => "loslessHighRes.png",
+            _ => null
+        };
+
+        return fileName is null
+            ? null
+            : new Uri(Path.Combine(AppContext.BaseDirectory, "Assets", "AudioBadges", fileName)).AbsoluteUri;
+    }
+
     private void OnDashboardStateChanged(DashboardState state)
     {
         if (_dispatcherQueue is null)
@@ -176,16 +192,27 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private void ApplyState(DashboardState state)
     {
         CurrentState = state;
-        ArtworkImage = CreateArtworkImage(state.CurrentArtworkPathOrUrl);
 
-        var palette = CreatePalette(state.PaletteSeed);
-        BackdropBrush = CreateBackdropBrush(palette.Primary, palette.Secondary);
-        AccentGlowBrush = CreateGlowBrush(palette.Accent, 0.78);
-        SecondaryGlowBrush = CreateGlowBrush(palette.SecondaryGlow, 0.64);
-        CardBrush = new SolidColorBrush(Color.FromArgb(72, 255, 255, 255));
-        HeroCardBrush = new SolidColorBrush(Color.FromArgb(86, 255, 255, 255));
-        CardBorderBrush = new SolidColorBrush(Color.FromArgb(98, 255, 255, 255));
-        AccentBrush = new SolidColorBrush(palette.Accent);
+        var artworkSource = state.CurrentArtworkPathOrUrl ?? string.Empty;
+        if (!string.Equals(_lastArtworkSource, artworkSource, StringComparison.Ordinal))
+        {
+            _lastArtworkSource = artworkSource;
+            ArtworkImage = CreateArtworkImage(artworkSource);
+        }
+
+        var paletteSeed = string.IsNullOrWhiteSpace(state.PaletteSeed) ? DefaultPaletteSeed : state.PaletteSeed;
+        if (!string.Equals(_lastPaletteSeed, paletteSeed, StringComparison.Ordinal))
+        {
+            _lastPaletteSeed = paletteSeed;
+            var palette = CreatePalette(paletteSeed);
+            BackdropBrush = CreateBackdropBrush(palette.Primary, palette.Secondary);
+            AccentGlowBrush = CreateGlowBrush(palette.Accent, 0.78);
+            SecondaryGlowBrush = CreateGlowBrush(palette.SecondaryGlow, 0.64);
+            CardBorderBrush = new SolidColorBrush(Color.FromArgb(98, 255, 255, 255));
+            AccentBrush = new SolidColorBrush(palette.Accent);
+        }
+
+        CurrentAudioBadgeAssetUri = ResolveAudioBadgeAssetUri(state.CurrentAudioVariant);
 
         NotifyDerivedStateChanged();
     }
@@ -197,6 +224,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAlbumUrl)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasArtistUrl)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasDiagnosticMessage)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAudioBadge)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PauseResumeLabel)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(MetadataEnrichmentLabel)));
         PauseResumeCommand.NotifyCanExecuteChanged();
@@ -245,7 +273,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private static Palette CreatePalette(string seed)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(string.IsNullOrWhiteSpace(seed) ? "apple-music-tracker" : seed));
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(string.IsNullOrWhiteSpace(seed) ? DefaultPaletteSeed : seed));
         var warm = bytes[0] % 2 == 0;
         var primaryHue = warm ? 18 + bytes[1] % 18 : 188 + bytes[1] % 18;
         var secondaryHue = warm ? primaryHue + 16 : primaryHue - 18;
