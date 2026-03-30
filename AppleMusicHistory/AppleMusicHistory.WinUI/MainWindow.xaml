@@ -87,7 +87,7 @@
                         Background="#18FFFFFF"
                         BorderBrush="{Binding CardBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="999"
+                        CornerRadius="15"
                         VerticalAlignment="Center">
                     <TextBlock FontSize="12"
                                Foreground="White"
@@ -108,13 +108,13 @@
                         Background="{Binding HeroCardBrush}"
                         BorderBrush="{Binding CardBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="30">
+                        CornerRadius="5">
                     <Grid RowSpacing="20">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
@@ -125,7 +125,7 @@
                                 Background="#16000000"
                                 BorderBrush="{Binding CardBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="26">
+                                CornerRadius="10">
                             <Grid>
                                 <Image Source="{Binding ArtworkImage}"
                                        Stretch="UniformToFill"
@@ -148,24 +148,31 @@
                         </Border>
 
                         <StackPanel Grid.Row="1" Spacing="6">
-                            <TextBlock FontSize="38"
+                            <TextBlock FontSize="25"
                                        FontWeight="SemiBold"
                                        Foreground="White"
                                        Text="{Binding CurrentState.CurrentTitle}"
                                        TextWrapping="WrapWholeWords" />
-                            <TextBlock FontSize="22"
-                                       Foreground="#D8FFFFFF"
-                                       Text="{Binding CurrentState.CurrentArtist}"
-                                       TextWrapping="WrapWholeWords" />
-                            <TextBlock FontSize="18"
-                                       Foreground="#B6FFFFFF"
-                                       Text="{Binding CurrentState.CurrentAlbum}"
-                                       TextWrapping="WrapWholeWords" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock FontSize="18"
+                                           Foreground="#D8FFFFFF"
+                                           Text="{Binding CurrentState.CurrentArtist}"
+                                           TextWrapping="WrapWholeWords" />
+                                <TextBlock FontSize="18"
+                                           Foreground="#D8FFFFFF"
+                                           Text=" --  "
+                                           TextWrapping="WrapWholeWords" />
+                                <TextBlock FontSize="18"
+                                           Foreground="#D8FFFFFF"
+                                           Text="{Binding CurrentState.CurrentAlbum}"
+                                           TextWrapping="WrapWholeWords" />
+                            </StackPanel>
+
                             <Border Margin="0,10,0,0"
                                     Padding="14,8"
                                     HorizontalAlignment="Left"
                                     Background="#16000000"
-                                    CornerRadius="999">
+                                    CornerRadius="15">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon FontSize="14"
                                               Foreground="{Binding AccentBrush}"
@@ -202,26 +209,7 @@
                                        Text="{Binding CurrentState.RemainingText}" />
                         </Grid>
 
-                        <StackPanel Grid.Row="3"
-                                    Spacing="10"
-                                    VerticalAlignment="Bottom">
-                            <TextBlock FontSize="15"
-                                       Foreground="#D8FFFFFF"
-                                       Text="{Binding CurrentState.ActiveSession}"
-                                       TextWrapping="WrapWholeWords" />
-                            <TextBlock FontSize="14"
-                                       Foreground="#B6FFFFFF"
-                                       Text="{Binding CurrentState.Statistics}"
-                                       TextWrapping="WrapWholeWords" />
-                            <TextBlock FontSize="14"
-                                       Foreground="#B6FFFFFF"
-                                       TextWrapping="WrapWholeWords">
-                                <Run Text="Last observed: " />
-                                <Run Text="{Binding CurrentState.LastObserved}" />
-                            </TextBlock>
-                        </StackPanel>
-
-                        <Grid Grid.Row="4"
+                        <Grid Grid.Row="3"
                               HorizontalAlignment="Center"
                               ColumnSpacing="16">
                             <Grid.ColumnDefinitions>
@@ -239,7 +227,7 @@
                                     BorderBrush="{Binding CardBorderBrush}"
                                     BorderThickness="1"
                                     Command="{Binding OpenDatabaseFolderCommand}"
-                                    CornerRadius="28"
+                                    CornerRadius="20"
                                     ToolTipService.ToolTip="Open database folder">
                                 <FontIcon FontSize="20" Glyph="&#xE838;" />
                             </Button>
@@ -251,7 +239,7 @@
                                     BorderBrush="{Binding CardBorderBrush}"
                                     BorderThickness="1"
                                     Click="OpenSongClick"
-                                    CornerRadius="28"
+                                    CornerRadius="20"
                                     IsEnabled="{Binding HasSongUrl}"
                                     ToolTipService.ToolTip="Open song page">
                                 <FontIcon FontSize="20" Glyph="&#xE189;" />
@@ -322,7 +310,7 @@
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{Binding CardBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="24">
+                                CornerRadius="5">
                             <StackPanel Spacing="12">
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Status" />
                                 <TextBlock Foreground="#E8FFFFFF" Text="{Binding CurrentState.AppleMusicState}" />
@@ -343,7 +331,7 @@
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{Binding CardBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="24">
+                                CornerRadius="5">
                             <StackPanel Spacing="12">
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Metadata" />
                                 <TextBlock Foreground="#C0FFFFFF">
@@ -378,7 +366,7 @@
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{Binding CardBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="24">
+                                CornerRadius="5">
                             <StackPanel Spacing="12">
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Statistics" />
                                 <TextBlock Foreground="#E8FFFFFF" Text="{Binding CurrentState.Statistics}" TextWrapping="WrapWholeWords" />
@@ -386,7 +374,6 @@
                                     <Run Text="Database: " />
                                     <Run Text="{Binding CurrentState.DatabasePath}" />
                                 </TextBlock>
-                                <TextBlock Foreground="#A8FFFFFF" Text="{Binding CurrentState.CurrentTrack}" TextWrapping="WrapWholeWords" />
                             </StackPanel>
                         </Border>
 
@@ -394,7 +381,7 @@
                                 Background="{Binding CardBrush}"
                                 BorderBrush="{Binding CardBorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="24">
+                                CornerRadius="5">
                             <StackPanel Spacing="16">
                                 <TextBlock FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Tools &amp; Settings" />
 
@@ -427,7 +414,7 @@
                                     <Border Grid.Column="1"
                                             Padding="12,6"
                                             Background="#14000000"
-                                            CornerRadius="999">
+                                            CornerRadius="5">
                                         <TextBlock Foreground="#E8FFFFFF" Text="{Binding MetadataEnrichmentLabel}" />
                                     </Border>
                                 </Grid>
