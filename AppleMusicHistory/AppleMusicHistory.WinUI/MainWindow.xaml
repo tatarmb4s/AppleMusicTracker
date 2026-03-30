@@ -96,7 +96,7 @@
             </Grid>
 
             <Grid Grid.Row="1"
-                  Margin="0,20,0,0"
+                  Margin="0,10,0,0"
                   ColumnSpacing="20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.2*" />
@@ -120,7 +120,7 @@
 
                         <Border Grid.Row="0"
                                 MaxWidth="620"
-                                MinHeight="420"
+                                MinHeight="220"
                                 HorizontalAlignment="Stretch"
                                 Background="#16000000"
                                 BorderBrush="{Binding CardBorderBrush}"
@@ -147,37 +147,36 @@
                             </Grid>
                         </Border>
 
-                        <StackPanel Grid.Row="1" Spacing="6">
+                        <StackPanel Grid.Row="1" Spacing="6" HorizontalAlignment="Center">
                             <TextBlock FontSize="25"
                                        FontWeight="SemiBold"
                                        Foreground="White"
                                        Text="{Binding CurrentState.CurrentTitle}"
-                                       TextWrapping="WrapWholeWords" />
-                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                       TextWrapping="WrapWholeWords"
+                                       TextAlignment="Center" />
+                            <StackPanel Orientation="Vertical" Spacing="8" VerticalAlignment="Center">
                                 <TextBlock FontSize="18"
                                            Foreground="#D8FFFFFF"
                                            Text="{Binding CurrentState.CurrentArtist}"
-                                           TextWrapping="WrapWholeWords" />
-                                <TextBlock FontSize="18"
-                                           Foreground="#D8FFFFFF"
-                                           Text=" --  "
-                                           TextWrapping="WrapWholeWords" />
+                                           TextWrapping="WrapWholeWords"
+                                           TextAlignment="Center" />
                                 <TextBlock FontSize="18"
                                            Foreground="#D8FFFFFF"
                                            Text="{Binding CurrentState.CurrentAlbum}"
-                                           TextWrapping="WrapWholeWords" />
+                                           TextWrapping="WrapWholeWords"
+                                           TextAlignment="Center" />
                             </StackPanel>
 
                             <Border Margin="0,10,0,0"
                                     Padding="14,8"
-                                    HorizontalAlignment="Left"
+                                    HorizontalAlignment="Center"
                                     Background="#16000000"
                                     CornerRadius="15">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon FontSize="14"
                                               Foreground="{Binding AccentBrush}"
                                               Glyph="&#xE768;" />
-                                    <TextBlock FontSize="14"
+                                    <TextBlock FontSize="12"
                                                Foreground="White"
                                                Text="{Binding CurrentState.CurrentAudioFormat}" />
                                 </StackPanel>
@@ -211,7 +210,7 @@
 
                         <Grid Grid.Row="3"
                               HorizontalAlignment="Center"
-                              ColumnSpacing="16">
+                              ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
@@ -221,20 +220,20 @@
                             </Grid.ColumnDefinitions>
 
                             <Button Grid.Column="0"
-                                    Width="56"
-                                    Height="56"
+                                    Width="40"
+                                    Height="40"
                                     Background="#14000000"
                                     BorderBrush="{Binding CardBorderBrush}"
                                     BorderThickness="1"
                                     Command="{Binding OpenDatabaseFolderCommand}"
                                     CornerRadius="20"
                                     ToolTipService.ToolTip="Open database folder">
-                                <FontIcon FontSize="20" Glyph="&#xE838;" />
+                                <FontIcon FontSize="14" Glyph="&#xE838;" />
                             </Button>
 
                             <Button Grid.Column="1"
-                                    Width="56"
-                                    Height="56"
+                                    Width="40"
+                                    Height="40"
                                     Background="#14000000"
                                     BorderBrush="{Binding CardBorderBrush}"
                                     BorderThickness="1"
@@ -242,16 +241,16 @@
                                     CornerRadius="20"
                                     IsEnabled="{Binding HasSongUrl}"
                                     ToolTipService.ToolTip="Open song page">
-                                <FontIcon FontSize="20" Glyph="&#xE189;" />
+                                <FontIcon FontSize="14" Glyph="&#xE189;" />
                             </Button>
 
                             <Button Grid.Column="2"
-                                    MinWidth="196"
-                                    Height="64"
+                                    MinWidth="80"
+                                    Height="56"
                                     Background="#F5FFFFFF"
                                     BorderThickness="0"
                                     Command="{Binding PauseResumeCommand}"
-                                    CornerRadius="32">
+                                    CornerRadius="20">
                                 <StackPanel Orientation="Horizontal"
                                             HorizontalAlignment="Center"
                                             Spacing="10">
@@ -266,8 +265,8 @@
                             </Button>
 
                             <Button Grid.Column="3"
-                                    Width="56"
-                                    Height="56"
+                                    Width="40"
+                                    Height="40"
                                     Background="#14000000"
                                     BorderBrush="{Binding CardBorderBrush}"
                                     BorderThickness="1"
@@ -275,17 +274,17 @@
                                     CornerRadius="28"
                                     IsEnabled="{Binding HasAlbumUrl}"
                                     ToolTipService.ToolTip="Open album page">
-                                <FontIcon FontSize="20" Glyph="&#xE8A5;" />
+                                <FontIcon FontSize="14" Glyph="&#xE8A5;" />
                             </Button>
 
                             <SplitButton Grid.Column="4"
                                          Width="74"
-                                         Height="56"
+                                         Height="40"
                                          Background="#14000000"
                                          BorderBrush="{Binding CardBorderBrush}"
                                          BorderThickness="1"
                                          Click="ExportSplitButtonClick"
-                                         CornerRadius="28"
+                                         CornerRadius="20"
                                          ToolTipService.ToolTip="Export">
                                 <SplitButton.Content>
                                     <FontIcon FontSize="20" Glyph="&#xE8A4;" />
